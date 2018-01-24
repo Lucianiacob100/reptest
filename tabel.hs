@@ -158,10 +158,10 @@
                  l = nrOfCells table
  
 --get the key from a triple at nth position
- getKey :: Int ->  HsType -> Int 
+ getKey :: Int ->  HsType -> Key 
  getKey n table = first . getTriPos n $ table
 
- getName :: Int -> HsType -> String
+ getName :: Int -> HsType -> Name
  getName n table = sec . getTriPos n $ table
 
  getJob :: Int -> HsType -> Meserie
@@ -195,15 +195,16 @@
  printSelected n table selec =  printElm $ ((firstntup n table) >>= \e -> [(selec e)]) 
                             
  printAll :: Show a => (t -> [a]) -> t -> IO ()
- printAll  filterf table =  putStrLn ("Numele din tabel sunt: \n" <>     
+ printAll  filterf table =  putStrLn ("Elementele slectate din tabel sunt: \n" <>     
                                   (mconcat  
                                     ((fmap show $ (filterf table)) >>=                       
                                       (\x -> [x <> "\n"]))))                              
-
+--prints filtered elements each one on a row
 
  mtoInt ::  String ->  Int
  mtoInt = \x -> (read x :: Int)
  
+ --given a Meserie, makes anew Triple wrapped in a IO
  makeTrip :: Meserie -> IO (Int,String,Meserie)
  makeTrip msr = getLine >>= \k -> getLine >>= \n -> return ((mtoInt k) , n , msr) 
 
@@ -240,13 +241,13 @@
                       pure table 
  --getKey --getNane --getJob
 
----uses the filterall functions define net
+---uses the filterall functions 
 -------------------------------------------------
- filterallkeys :: HsType-> [Int]
+ filterallkeys :: HsType-> [Key]
  filterallkeys EndPointr = []
  filterallkeys (Cell x y) = (first x) : (filterallkeys y)
 
- filterallnames :: HsType -> [String]
+ filterallnames :: HsType -> [Name]
  filterallnames EndPointr = []
  filterallnames (Cell x y)  = (sec x) : (filterallnames y)
 
@@ -279,7 +280,8 @@
  removeElemE :: HsType -> HsType
  removeElemE (Cell x y) | y == EndPointr = EndPointr
                         |otherwise = Cell x (removeElemE y)
-     
+ 
+ -- drop last n elemnts
  dropLast :: Int -> HsType -> HsType
  dropLast _ EndPointr = EndPointr
  dropLast ind table  | ind == 0 = table
@@ -320,6 +322,7 @@
  reversetable (Cell x y)| y == EndPointr = (Cell x y)
                         |otherwise       = addElemE x (reversetable y) 
 
+
  insertAtIndex :: Triple -> Int -> HsType -> HsType
  insertAtIndex trip nPos EndPointr   = EndPointr
  insertAtIndex trip nPos (Cell x y) | nPos == 0 = Cell trip (Cell x y) 
@@ -333,10 +336,4 @@
                                |otherwise = Cell x (removeAtIndex (nPos-1) y)   
 
 
-
-
-
-
-                                     
-       
 
