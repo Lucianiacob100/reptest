@@ -215,9 +215,6 @@
  mtoInt ::  String ->  Int
  mtoInt = \x -> (read x :: Int)
 
- makeTriple :: Key -> Name -> Meserie -> Triple
- makeTriple k n m =  (k,n,m) 
-
  --given a Meserie, makes a new IO Triple 
  makeTrip :: Meserie -> IO (Int,String,Meserie)
  makeTrip msr = getLine >>= \k -> getLine >>= \n -> return ((mtoInt k) , n , msr) 
