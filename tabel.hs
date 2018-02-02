@@ -49,7 +49,7 @@
 
  thrd :: Triple -> Meserie
  thrd = (\(x,y,z) -> z) 
-
+--
  class Nrcells a where
      nrOfCells :: a -> Int
 
@@ -134,7 +134,8 @@
     filterbyfirst (Cell  x y) = Cell x (filterovert (/= x) y)
              in  filterbyfirst  (Cell x (removedup  y))
 
-
+---------------------------------------------------------------
+---------------------------------------------------------------
  searchforkey :: Key -> HsType -> Int --returns an index
  searchforkey key (Cell x y) |(y == EndPointr) && ((first x) /= key) = 1
                              |key == (first x) = 0
@@ -151,12 +152,25 @@
                                | name == (sec x) = 0
                                | otherwise = 1 + searchforname name y 
  
- nameexists :: Name -> HsType -> Bool
- nameexists name table | n == l = False
-                       |otherwise = True
+ nameexists :: Name -> HsType -> IO ()
+ nameexists name table | n == l = putStrLn "Numele nu exista in tabel"
+                       |otherwise = putStrLn ("Numele se afla in tabel la index " ++ (show n))
            where n = searchforname name table
                  l = nrOfCells table
- 
+ -------------------------------------------------------------------
+---------------------------------------------------------------------
+
+ searchForElem :: (Elemente a, Eq a) => a -> (Triple -> a ) -> HsType -> Maybe Triple
+ searchForElem e sel EndPointr = Nothing
+ searchForElem e sel (Cell x y) = (Just e) >>= 
+                                 \el -> (Just (sel x)) >>=
+                                 \ en -> if el == en then 
+                                         return x
+                                         else (searchForElem e sel y) 
+                                                      
+
+-------------------------------------------------------------------------
+-------------------------------------------------------------------------
 --get the key from a triple at nth position
  getKey :: Int ->  HsType -> Key 
  getKey n table = first . getTriPos n $ table
@@ -167,14 +181,11 @@
  getJob :: Int -> HsType -> Meserie
  getJob n table = thrd . getTriPos n $ table
 
- firstntup :: Int -> HsType -> [Triple]
- firstntup 0 (Cell x y) = [x]
- firstntup n (Cell x y) = [x] ++ (firstntup (n-1) y)
- firstntup n EndPointr = [nilTriple]
+------------------------------------------------------------------------------
      
-     --monadic interactions
  fltFirst :: Elemente a =>  Int ->  HsType-> (Triple -> a) -> [a]
  fltFirst n table selec = (firstntup n table) >>= \ e -> [(selec e)]
+-----uses the filterall functions
 
  printElm :: Show a => [a] -> IO ()
  printElm [] = print ""
@@ -199,12 +210,15 @@
                                   (mconcat  
                                     ((fmap show $ (filterf table)) >>=                       
                                       (\x -> [x <> "\n"]))))                              
---prints filtered elements each one on a row
+--prints all  elements each one on a row
 
  mtoInt ::  String ->  Int
  mtoInt = \x -> (read x :: Int)
- 
- --given a Meserie, makes anew Triple wrapped in a IO
+
+ makeTriple :: Key -> Name -> Meserie -> Triple
+ makeTriple k n m =  (k,n,m) 
+
+ --given a Meserie, makes a new IO Triple 
  makeTrip :: Meserie -> IO (Int,String,Meserie)
  makeTrip msr = getLine >>= \k -> getLine >>= \n -> return ((mtoInt k) , n , msr) 
 
@@ -214,7 +228,7 @@
  mAddElem addf t_msr table = pure addElemB <*> 
                             (makeTrip t_msr) <*>
                              pure table
- --addElemB --addElemE --insert at beggineg and the end
+ --addElemB --addElemE --insert at beginning or the end
 
 
  minsertion :: (Triple -> Int -> HsType -> HsType) ->
@@ -239,10 +253,10 @@
  mgetElem fn table = pure fn <*> 
                      ( fmap mtoInt $ getLine) <*>
                       pure table 
- --getKey --getNane --getJob
+ --getKey --getName --getJob
 
----uses the filterall functions 
 -------------------------------------------------
+
  filterallkeys :: HsType-> [Key]
  filterallkeys EndPointr = []
  filterallkeys (Cell x y) = (first x) : (filterallkeys y)
@@ -255,15 +269,21 @@
  filteralljobs EndPointr = []
  filteralljobs (Cell x y)  = (thrd x) : (filteralljobs y) 
   
- filterkeys :: (Key -> Bool) -> HsType -> [Int]
+ filterkeys :: (Key -> Bool) -> HsType -> [Key]
  filterkeys p table = filter p . filterallkeys $ table
 
- filternames :: (String -> Bool) -> HsType -> [String]
+ filternames :: (String -> Bool) -> HsType -> [Name]
  filternames p table = filter p . filterallnames $ table
 
  filterjobs :: (Meserie -> Bool) -> HsType -> [Meserie]
  filterjobs p table = filter p . filteralljobs $ table
 -------------------------------------------------------------------
+ firstntup :: Int -> HsType -> [Triple]
+ firstntup 0 (Cell x y) = [x]
+ firstntup n (Cell x y) = [x] ++ (firstntup (n-1) y)
+ firstntup n EndPointr = [nilTriple]
+
+
  takeFirst :: Int -> HsType -> HsType
  takeFirst _ EndPointr = EndPointr
  takeFirst ind (Cell x y) | ind == 0 = EndPointr
@@ -296,13 +316,9 @@
                where l = nrOfCells (Cell x y)
 
 
- makeTriple :: Key -> Name -> Meserie -> Triple
- makeTriple k n m =  (k,n,m) 
-
-
  addElemB :: Triple -> HsType -> HsType
  addElemB trip (Cell x y) = Cell trip (Cell x y)
- --will result in a new list with the new element at the beginning
+ --will result in a new table with the new element at the beginning
 
  addElemE :: Triple -> HsType -> HsType
  addElemE trip EndPointr = Cell trip EndPointr
