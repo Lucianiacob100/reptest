@@ -1,41 +1,55 @@
  
  import Data.Monoid
 
- {- Constructing a table as a linked list of cells
+ {- addToEndtructing a table as a linked list of Rows
    ___        ___                        ___________
   | * | ---> | * | --->           * ---> EndPointr  |
   |_|_|      |___|         . . . .  .    ___________|
     |
     |____(                             )
-         ( (cheie, nume, loc de munca) )
+         ( (key, name, job) )
 
   -}
  
- data Meserie = Brutar String 
+ data Job = Brutar String 
                |Mecanic String 
                |PilotF1 String 
                |Electrician String 
                |Medic String
                |Nimic            deriving (Show,Eq)
 
- data HashTable a b  c = EndPointr | Cell (a,b,c) (HashTable a b c) 
+ data Table a b  c = EndPointr | Row (a,b,c) (Table a b c) 
                             deriving (Show, Eq) 
 
  type Key = Int
  type Name = String
- type Triple = (Key,Name,Meserie)
- type HsType = HashTable Key String Meserie --declaring type synonyms 
+ type Triple = (Key,Name,Job)
+ type HsType = Table Key Name Job --declaring type synonyms 
 
  mytable :: HsType
- mytable = Cell (1, "Lucian", Brutar "de cativa ani") 
-            ( Cell (2, "Ionut", PilotF1 "in timpul liber")
-              ( Cell (3 ,"Marian", Mecanic "categoria 1") 
-                ( Cell (4, "Cristian",Electrician "priceput")
-                   ( Cell (3 ,"Marian", Mecanic "categoria 1")
-                     (Cell (1, "Lucian", Brutar "de cativa ani") 
-                        (Cell (5, "Mihai" , Medic "oftalmolog")( EndPointr)
-                                           ))))))
+ mytable =        Row (1, "Lucian",  Brutar "de cativa ani")
+                ( Row (1, "Lucian",  Brutar "de cativa ani") 
+                ( Row (2, "Ionut",   PilotF1 "in timpul liber")
+                ( Row (3 ,"Marian",  Mecanic "categoria 1") 
+                ( Row (2, "Ionut",   PilotF1 "in timpul liber")
+                ( Row (4, "Cristian",Electrician "priceput")
+                ( Row (3 ,"Marian",  Mecanic "categoria 1")
+                ( Row (1, "Lucian",  Brutar "de cativa ani") 
+                ( Row (5, "Mihai" ,  Medic "oftalmolog")( EndPointr)
+                                           ))))))))
 
+
+ instance (Eq a , Eq b , Eq c) => Monoid (Table a b c) where
+    
+     mempty  = EndPointr
+     
+     mappend = tablejoin
+
+     mconcat lst = foldr tablejoin mempty  lst
+     --mconcat lst = foldr1 tablejoin   lst
+     --mconcat lst = foldr mappend mempty  lst
+     
+     
  nilTriple :: Triple
  nilTriple = (-1 , "" ,Nimic )
 
@@ -47,122 +61,219 @@
  sec :: Triple -> Name
  sec = (\(x,y,z) -> y)
 
- thrd :: Triple -> Meserie
+ thrd :: Triple -> Job
  thrd = (\(x,y,z) -> z) 
 --
- class Nrcells a where
-     nrOfCells :: a -> Int
-
- class Restoflist a where 
-     restOfList :: a -> a
-
- class Elemente a where
+ class Elements a where
      triv :: a -> a
 
-
- instance Elemente Int where
+ instance Elements Int where
     triv n = n
 
- instance Elemente ([] a) where
+ instance Elements ([] a) where
     triv [s] = [s]
 
- instance Elemente Meserie where
+ instance Elements Job where
      triv _ = Brutar ""
 
- instance Elemente (HashTable a b c) where
+ instance Elements (Table a b c) where
      triv EndPointr = EndPointr
-     triv (Cell x y) = (Cell x y) 
+     triv (Row x y) = (Row x y) 
+-------------------------------------------
+ class  GeneralMet a where 
+     restOfList    :: a -> a
+     nrOfRows      :: a -> Int
+     tablejoin     :: Eq a => a -> a -> a
+     removeAtIndex :: Int -> a -> a
+     takeFirst     :: Int -> a -> a
+     dropFirst     :: Int -> a -> a
+     removeElemE   :: Eq a =>  a -> a 
+     dropLast      :: Eq a => Int -> a -> a
+     slicetable    :: Eq a =>  a -> Int  -> Int -> Maybe a      
+     
+   
 
- instance Nrcells (HashTable x y z) where
-     nrOfCells EndPointr = 0
-     nrOfCells (Cell x y) =  1 + (nrOfCells y)
- 
- instance Restoflist (HashTable k n w) where
-      restOfList (Cell x y) = y
+ instance GeneralMet (Table k n w) where
+
+      restOfList (Row x y) = y
       restOfList EndPointr = EndPointr
+
+      nrOfRows EndPointr = 0
+      nrOfRows (Row x y) =  1 + (nrOfRows y) 
+    
+      --tablejoin EndPointr EndPointr = EndPointr
+      tablejoin (Row x y) table | y == EndPointr =  (Row x table) 
+                                |otherwise       = Row x (tablejoin y table)
+
+      removeAtIndex nPos EndPointr = EndPointr
+      removeAtIndex nPos (Row x y) | nPos == 0 = y
+                                   |otherwise = Row x (removeAtIndex (nPos-1) y)   
+
+     
+      takeFirst _ EndPointr = EndPointr
+      takeFirst ind (Row x y) | ind == 0 = EndPointr
+                              |otherwise = (Row x (takeFirst (ind - 1) y)) 
+
+
+      dropFirst _ EndPointr   = EndPointr
+      dropFirst ind table      | ind == 0  = table
+      dropFirst ind (Row x y)  | ind == 1 = y
+                               |otherwise = dropFirst (ind-1) y  
+
+      removeElemE (Row x y) | y == EndPointr = EndPointr
+                            |otherwise = Row x (removeElemE y)
+
+
+      dropLast _ EndPointr = EndPointr
+      dropLast ind table  | ind == 0 = table
+                          |otherwise = dropLast (ind - 1) (removeElemE table)
  
- firstCell :: HsType -> Triple
- firstCell (Cell x y) = x
- firstCell EndPointr = nilTriple
+
+
+      slicetable  (Row x y) ind1 ind2 | ind1 > ind2  = Nothing
+      slicetable  (Row x y) ind1 ind2 | ind1 == ind2 = Just (Row x EndPointr)
+                                      |otherwise     = Just ((dropFirst ind1) . 
+                                                         (dropLast (l - ind2))  $ (Row x y))
+                                    where l = nrOfRows (Row x y)
+
+--------------------------------------------------------
+
+ cons :: (a, b, c) -> Table a b c -> Table a b c
+ cons trip (Row x y) = Row trip (Row x y)
+
+
+ fstTrip :: HsType -> Triple
+ fstTrip (Row x y) = x
+ fstTrip EndPointr = nilTriple
+
+ addToEnd :: (Eq a, Eq b, Eq c) => (a, b, c) -> Table a b c -> Table a b c
+ addToEnd trip EndPointr = Row trip EndPointr
+ addToEnd trip (Row x y) | y == EndPointr =  (Row x (Row trip EndPointr))
+                         |otherwise = Row x (addToEnd trip y)
+
+ reversetable :: HsType -> HsType
+ reversetable (Row x y)| y == EndPointr = (Row x y)
+                       |otherwise       = addToEnd x (reversetable y) 
+
+
+ firstntup :: Int -> HsType -> [Triple]
+ firstntup 0 (Row x y) = [x]
+ firstntup n (Row x y) = [x] ++ (firstntup (n-1) y)
+ firstntup n EndPointr = [nilTriple]
+
+
+ insertAtIndex :: Triple -> Int -> HsType -> HsType
+ insertAtIndex trip nPos EndPointr   = EndPointr
+ insertAtIndex trip nPos (Row x y) | nPos == 0 = Row trip (Row x y) 
+                                    | nPos == 1 = Row x (Row trip y)
+                                    | otherwise = Row x (insertAtIndex trip (nPos-1) y)      
+  
+ ---------------------------------------
+-------------------------------------------------------------------
+
 
  getTriPos :: Int -> HsType -> Triple
- getTriPos 0 table = firstCell table
- getTriPos n (Cell x y) = getTriPos (n-1) y
+ getTriPos 0 table = fstTrip table
+ getTriPos n (Row x y) = getTriPos (n-1) y
  getTriPos n EndPointr = nilTriple
+
+---------------------------------------------------
+ mapovert :: (Triple -> Triple ) -> HsType -> HsType
+ mapovert f EndPointr = EndPointr
+ mapovert f (Row x y) = Row (f x) (mapovert f y)
+
+--filter f applied over his list of Rows
+ filterovert :: (Triple -> Bool) -> HsType -> HsType
+ filterovert p EndPointr = EndPointr
+ filterovert p (Row x y) | (p x) =  Row x (filterovert  p y)
+                         |otherwise = filterovert p y
+----------------------------------------------------------------------
+
+ searchfordup :: Int-> Int -> Triple -> HsType -> (Int, Int)
+ searchfordup _ _ _ EndPointr = (0,-1)
+ searchfordup startPos itPos trip (Row x y) | trip ==  mytrip = (startPos,itPos)
+                                            |otherwise = searchfordup startPos (itPos + 1) trip y
+                     where mytrip = fstTrip y 
+
+
+ duplicateentries  :: Int -> Int -> HsType -> [(Int,Int)]
+ duplicateentries  i j (Row x y )| y == EndPointr = [(0,-1)]
+ duplicateentries i j (Row x y) = (searchfordup i j x (Row x y)) : (duplicateentries (i+1) (j+1) y)
+  
+ -- onlyduplicates :: HsType -> [(Int,Int)] 
+ --onlyduplicates  table = filter (/= (0,-1) ) (duplicateentries 0 1 table)
+
+ removedup :: HsType -> HsType                             
+ removedup   EndPointr = EndPointr  
+ removedup (Row x y) = let
+    filterbyfirst :: HsType -> HsType
+    filterbyfirst EndPointr = EndPointr
+    filterbyfirst (Row  x y) = Row x (filterovert (/= x) y)
+             in  filterbyfirst  (Row x (removedup  y))
+
+
+
+ foldrighttable fn en  EndPointr = en
+ foldrighttable fn en (Row x y) =  (fn x (foldrighttable fn en y)) 
+ 
+ applypred op table = Row (fstTrip table) 
+                    (foldrighttable (\ a b  ->  if   (op a  (fstTrip table)) then b
+                                                 else (Row a b))
+                                     EndPointr table)
+
+ 
+ remdup :: HsType -> HsType
+ remdup (Row x EndPointr) = (Row x EndPointr)
+ remdup (Row x y) = Row x (applypred (==) (remdup y))
+
+
+ removeduplicates :: HsType -> HsType
+ removeduplicates = applypred (==) . remdup
+ {--}
+
+
+---------------------------------------------------------------
 
  searchfortrip :: Triple -> HsType -> Int 
  searchfortrip trip EndPointr = 1       
- searchfortrip trip (Cell x y) | trip == x = 0
-                               | otherwise = 1 + searchfortrip trip y
+ searchfortrip trip (Row x y) | trip == x = 0
+                              | otherwise = 1 + searchfortrip trip y
 
  tripleexists :: Triple -> HsType -> Bool
  tripleexists trip table | n == l = False
                          |otherwise = True
          where n = searchfortrip trip table
-               l = nrOfCells table 
- 
- 
- searchfordup :: Int-> Int -> Triple -> HsType -> (Int, Int)
- searchfordup _ _ _ EndPointr = (0,-1)
- searchfordup startPos itPos trip (Cell x y) | trip ==  mytrip = (startPos,itPos)
-                                             |otherwise = searchfordup startPos (itPos + 1) trip y
-                     where mytrip = firstCell y 
+               l = nrOfRows table 
 
 
- duplicateentries  :: Int -> Int -> HsType -> [(Key,Key)]
- duplicateentries  i j (Cell x y )| y == EndPointr = [(0,-1)]
- duplicateentries i j (Cell x y) = (searchfordup i j x (Cell x y)) : (duplicateentries (i+1) (j+1) y)
-  
- onlyduplicates :: HsType -> [(Key,Key)] 
- onlyduplicates  table = filter (/= (0,-1) ) (duplicateentries 0 1 table)
 
- mapovert :: (Triple -> Triple ) -> HsType -> HsType
- mapovert f EndPointr = EndPointr
- mapovert f (Cell x y) = Cell (f x) (mapovert f y)
-
---filter f applied over his list of cells
- filterovert :: (Triple -> Bool) -> HsType -> HsType
- filterovert p EndPointr = EndPointr
- filterovert p (Cell x y) | (p x) =  Cell x (filterovert  p y)
-                          |otherwise = filterovert p y
-
- removedup :: HsType -> HsType                             
- removedup   EndPointr = EndPointr  
- removedup (Cell x y) = let
-    filterbyfirst :: HsType -> HsType
-    filterbyfirst EndPointr = EndPointr
-    filterbyfirst (Cell  x y) = Cell x (filterovert (/= x) y)
-             in  filterbyfirst  (Cell x (removedup  y))
-
----------------------------------------------------------------
----------------------------------------------------------------
  searchforkey :: Key -> HsType -> Int --returns an index
- searchforkey key (Cell x y) |(y == EndPointr) && ((first x) /= key) = 1
-                             |key == (first x) = 0
-                             |otherwise = 1 + searchforkey key y
+ searchforkey key (Row x y) |(y == EndPointr) && ((first x) /= key) = 1
+                            |key == (first x) = 0
+                            |otherwise = 1 + searchforkey key y
 
  keyexists :: Key -> HsType -> Bool
  keyexists key table | n == l = False
                      |otherwise = True
           where n = searchforkey key table
-                l = nrOfCells table
+                l = nrOfRows table
 
  searchforname :: Name -> HsType -> Int  
- searchforname name (Cell x y) | (y == EndPointr) && ((sec x) /= name) = 1
-                               | name == (sec x) = 0
-                               | otherwise = 1 + searchforname name y 
+ searchforname name (Row x y) | (y == EndPointr) && ((sec x) /= name) = 1
+                              | name == (sec x) = 0
+                              | otherwise = 1 + searchforname name y 
  
  nameexists :: Name -> HsType -> IO ()
  nameexists name table | n == l = putStrLn "Numele nu exista in tabel"
                        |otherwise = putStrLn ("Numele se afla in tabel la index " ++ (show n))
            where n = searchforname name table
-                 l = nrOfCells table
+                 l = nrOfRows table
  -------------------------------------------------------------------
 ---------------------------------------------------------------------
 
- searchForElem :: (Elemente a, Eq a) => a -> (Triple -> a ) -> HsType -> Maybe Triple
+ searchForElem :: (Elements a, Eq a) => a -> (Triple -> a ) -> HsType -> Maybe Triple
  searchForElem e sel EndPointr = Nothing
- searchForElem e sel (Cell x y) = (Just e) >>= 
+ searchForElem e sel (Row x y) = (Just e) >>= 
                                  \el -> (Just (sel x)) >>=
                                  \ en -> if el == en then 
                                          return x
@@ -178,12 +289,12 @@
  getName :: Int -> HsType -> Name
  getName n table = sec . getTriPos n $ table
 
- getJob :: Int -> HsType -> Meserie
+ getJob :: Int -> HsType -> Job
  getJob n table = thrd . getTriPos n $ table
 
 ------------------------------------------------------------------------------
      
- fltFirst :: Elemente a =>  Int ->  HsType-> (Triple -> a) -> [a]
+ fltFirst :: Elements a =>  Int ->  HsType-> (Triple -> a) -> [a]
  fltFirst n table selec = (firstntup n table) >>= \ e -> [(selec e)]
 -----uses the filterall functions
 
@@ -206,7 +317,7 @@
  printSelected n table selec =  printElm $ ((firstntup n table) >>= \e -> [(selec e)]) 
                             
  printAll :: Show a => (t -> [a]) -> t -> IO ()
- printAll  filterf table =  putStrLn ("Elementele slectate din tabel sunt: \n" <>     
+ printAll  filterf table =  putStrLn ("Elementele selectate din tabel sunt: \n" <>     
                                   (mconcat  
                                     ((fmap show $ (filterf table)) >>=                       
                                       (\x -> [x <> "\n"]))))                              
@@ -215,21 +326,24 @@
  mtoInt ::  String ->  Int
  mtoInt = \x -> (read x :: Int)
 
- --given a Meserie, makes a new IO Triple 
- makeTrip :: Meserie -> IO (Int,String,Meserie)
+ makeTriple :: Key -> Name -> Job -> Triple
+ makeTriple k n m =  (k,n,m) 
+
+ --given a Job, makes a new IO Triple 
+ makeTrip :: Job -> IO (Int,String,Job)
  makeTrip msr = getLine >>= \k -> getLine >>= \n -> return ((mtoInt k) , n , msr) 
 
 
  mAddElem :: (Triple -> HsType -> HsType) ->
-               Meserie -> HsType -> IO HsType
- mAddElem addf t_msr table = pure addElemB <*> 
+               Job -> HsType -> IO HsType
+ mAddElem addf t_msr table = pure cons <*> 
                             (makeTrip t_msr) <*>
                              pure table
- --addElemB --addElemE --insert at beginning or the end
+ --cons --addToEnd --insert at beginning or the end
 
 
  minsertion :: (Triple -> Int -> HsType -> HsType) ->
-                        Meserie -> HsType -> IO HsType
+                        Job -> HsType -> IO HsType
  minsertion insrtf t_msr table = pure insrtf <*>
                                 (makeTrip t_msr) <*>
                                 (fmap mtoInt $ getLine) <*>
@@ -245,7 +359,7 @@
                       pure table 
  --takeFirst --droptFirst --removeAtIndex dropLast
 
- mgetElem :: Elemente a => ( Int ->  HsType -> a) ->
+ mgetElem :: Elements a => ( Int ->  HsType -> a) ->
                                      HsType -> IO a              
  mgetElem fn table = pure fn <*> 
                      ( fmap mtoInt $ getLine) <*>
@@ -256,15 +370,15 @@
 
  filterallkeys :: HsType-> [Key]
  filterallkeys EndPointr = []
- filterallkeys (Cell x y) = (first x) : (filterallkeys y)
+ filterallkeys (Row x y) = (first x) : (filterallkeys y)
 
  filterallnames :: HsType -> [Name]
  filterallnames EndPointr = []
- filterallnames (Cell x y)  = (sec x) : (filterallnames y)
+ filterallnames (Row x y)  = (sec x) : (filterallnames y)
 
- filteralljobs :: HsType -> [Meserie]
+ filteralljobs :: HsType -> [Job]
  filteralljobs EndPointr = []
- filteralljobs (Cell x y)  = (thrd x) : (filteralljobs y) 
+ filteralljobs (Row x y)  = (thrd x) : (filteralljobs y) 
   
  filterkeys :: (Key -> Bool) -> HsType -> [Key]
  filterkeys p table = filter p . filterallkeys $ table
@@ -272,81 +386,9 @@
  filternames :: (String -> Bool) -> HsType -> [Name]
  filternames p table = filter p . filterallnames $ table
 
- filterjobs :: (Meserie -> Bool) -> HsType -> [Meserie]
+ filterjobs :: (Job -> Bool) -> HsType -> [Job]
  filterjobs p table = filter p . filteralljobs $ table
 -------------------------------------------------------------------
- firstntup :: Int -> HsType -> [Triple]
- firstntup 0 (Cell x y) = [x]
- firstntup n (Cell x y) = [x] ++ (firstntup (n-1) y)
- firstntup n EndPointr = [nilTriple]
-
-
- takeFirst :: Int -> HsType -> HsType
- takeFirst _ EndPointr = EndPointr
- takeFirst ind (Cell x y) | ind == 0 = EndPointr
-                          |otherwise = (Cell x (takeFirst (ind - 1) y)) 
-
-
- dropFirst :: Int -> HsType -> HsType
- dropFirst _ EndPointr   = EndPointr
- dropFirst ind table      | ind == 0  = table
- dropFirst ind (Cell x y) | ind == 1 = y
-                          |otherwise = dropFirst (ind-1) y  
-
- --"remove" the last element
- removeElemE :: HsType -> HsType
- removeElemE (Cell x y) | y == EndPointr = EndPointr
-                        |otherwise = Cell x (removeElemE y)
- 
- -- drop last n elemnts
- dropLast :: Int -> HsType -> HsType
- dropLast _ EndPointr = EndPointr
- dropLast ind table  | ind == 0 = table
-                     |otherwise = dropLast (ind - 1) (removeElemE table)
---runs very slowly for large table lists
-
- slicetable :: HsType ->Int  -> Int -> Maybe HsType
- slicetable  _ ind1 ind2          | ind1 > ind2 = Nothing
- slicetable  (Cell x y) ind1 ind2 | ind1 == ind2 = Just (Cell x EndPointr)
-                                  |otherwise = Just ((dropFirst ind1) . 
-                                                 (dropLast (l - ind2))  $ (Cell x y))
-               where l = nrOfCells (Cell x y)
-
-
- addElemB :: Triple -> HsType -> HsType
- addElemB trip (Cell x y) = Cell trip (Cell x y)
- --will result in a new table with the new element at the beginning
-
- addElemE :: Triple -> HsType -> HsType
- addElemE trip EndPointr = Cell trip EndPointr
- addElemE trip (Cell x y) | y == EndPointr =  (Cell x (Cell trip EndPointr))
-                          |otherwise = Cell x (addElemE trip y)             
-
-
- --joining two tables
- tablejoin :: HsType -> HsType -> HsType
- tablejoin (Cell x y) table | y == EndPointr =  (Cell x table) 
-                            |otherwise       = Cell x (tablejoin y table)
-
-
-
- --reversing the order of the cells
- reversetable :: HsType -> HsType
- reversetable (Cell x y)| y == EndPointr = (Cell x y)
-                        |otherwise       = addElemE x (reversetable y) 
-
-
- insertAtIndex :: Triple -> Int -> HsType -> HsType
- insertAtIndex trip nPos EndPointr   = EndPointr
- insertAtIndex trip nPos (Cell x y) | nPos == 0 = Cell trip (Cell x y) 
-                                    | nPos == 1 = Cell x (Cell trip y)
-                                    | otherwise = Cell x (insertAtIndex trip (nPos-1) y) 
-
- 
- removeAtIndex :: Int -> HsType -> HsType
- removeAtIndex nPos EndPointr = EndPointr
- removeAtIndex nPos (Cell x y) | nPos == 0 = y
-                               |otherwise = Cell x (removeAtIndex (nPos-1) y)   
 
 
 
