@@ -1,7 +1,7 @@
  
  import Data.Monoid
 
- {- addToEndtructing a table as a linked list of Rows
+ {-  table as a linked list of Rows
    ___        ___                        ___________
   | * | ---> | * | --->           * ---> EndPointr  |
   |_|_|      |___|         . . . .  .    ___________|
