@@ -49,21 +49,21 @@
      --mconcat lst = foldr1 tablejoin   lst
      --mconcat lst = foldr mappend mempty  lst
      
+ class  Selectors s where
+     first :: Elements a => s a b c -> a
+     sec   :: Elements b => s a b c -> b
+     thrd  :: Elements c => s a b c -> c 
+
+ instance  Selectors (,,)  where
+     first (a,b,c) = (\(x,y,z) -> a) $ (a,b,c)
+
+     sec (a,b,c)   = (\(x,y,z) -> y) $ (a,b,c)
+
+     thrd (a,b,c)  = (\(x,y,z) -> z) $ (a,b,c)
+
      
- nilTriple :: Triple
- nilTriple = (-1 , "" ,Nimic )
+-------------------------------
 
- -- defining selectors
-
- first :: Triple -> Key
- first  = (\(x,y,z) -> x) 
-
- sec :: Triple -> Name
- sec = (\(x,y,z) -> y)
-
- thrd :: Triple -> Job
- thrd = (\(x,y,z) -> z) 
---
  class Elements a where
      triv :: a -> a
 
@@ -137,6 +137,10 @@
                                     where l = nrOfRows (Row x y)
 
 --------------------------------------------------------
+
+ nilTriple :: Triple
+ nilTriple = (-1 , "" ,Nimic )
+
 
  cons :: (a, b, c) -> Table a b c -> Table a b c
  cons trip (Row x y) = Row trip (Row x y)
