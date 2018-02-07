@@ -55,7 +55,7 @@
      thrd  :: Elements c => s a b c -> c 
 
  instance  Selectors (,,)  where
-     first (a,b,c) = (\(x,y,z) -> a) $ (a,b,c)
+     first (a,b,c) = (\(x,y,z) -> x) $ (a,b,c)
 
      sec (a,b,c)   = (\(x,y,z) -> y) $ (a,b,c)
 
