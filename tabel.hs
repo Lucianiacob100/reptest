@@ -167,7 +167,7 @@
 
  insertAtIndex :: Triple -> Int -> HsType -> HsType
  insertAtIndex trip nPos EndPointr   = EndPointr
- insertAtIndex trip nPos (Row x y) | nPos == 0 = Row trip (Row x y) 
+ insertAtIndex trip nPos (Row x y)  | nPos == 0 = Row trip (Row x y) 
                                     | nPos == 1 = Row x (Row trip y)
                                     | otherwise = Row x (insertAtIndex trip (nPos-1) y)      
   
@@ -391,23 +391,22 @@
  --cons --addToEnd --insert at beginning or the end
 
 
-
  minsertion  table = pure insertAtIndex <*>
                                  (putStrLn "Introduceti datele :" >>
                                  (mt >>= \t -> fmap transf $ return t )) <*>
-                                 (putStr "La indexul.." >>
+                                 (putStr "La indexul.." >> (
+                                  fmap (\e -> case e of
+                                              (Just n) -> n
+                                              _ -> -1 )
                                  ( fmap (fmap mtoInt) $ (getLine >>= \n -> if verify n then 
                                                                        return (Just n)
-                                                                      else return Nothing ) )) >>=
-                                 ( \m -> return ((\ (Just x) -> x) $ m) ) <*>
+                                                                      else return Nothing ) )))  <*>
                                      pure table  
-                                    --unfinished!!!!!!!
                                 
  ---insertAtIndex :: Triple -> Int -> HsType -> HsType
-
  
 
- subtable :: (Int -> HsType -> HsType) ->
+ subtable :: (Int -> HsType -> HsType)->
                     HsType -> IO HsType
  subtable fn table = pure fn <*> 
                       (fmap mtoInt $ getLine) <*> 
