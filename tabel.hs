@@ -1,7 +1,8 @@
  
  import Data.Monoid
-
- {-  table as a linked list of Rows
+ import  Data.Char
+ 
+ {- a table as a linked list of Rows
    ___        ___                        ___________
   | * | ---> | * | --->           * ---> EndPointr  |
   |_|_|      |___|         . . . .  .    ___________|
@@ -55,7 +56,7 @@
      thrd  :: Elements c => s a b c -> c 
 
  instance  Selectors (,,)  where
-     first (a,b,c) = (\(x,y,z) -> x) $ (a,b,c)
+     first (a,b,c) = (\(x,y,z) -> a) $ (a,b,c)
 
      sec (a,b,c)   = (\(x,y,z) -> y) $ (a,b,c)
 
@@ -90,7 +91,6 @@
      removeElemE   :: Eq a =>  a -> a 
      dropLast      :: Eq a => Int -> a -> a
      slicetable    :: Eq a =>  a -> Int  -> Int -> Maybe a      
-     
    
 
  instance GeneralMet (Table k n w) where
@@ -141,10 +141,9 @@
  nilTriple :: Triple
  nilTriple = (-1 , "" ,Nimic )
 
-
+     
  cons :: (a, b, c) -> Table a b c -> Table a b c
  cons trip (Row x y) = Row trip (Row x y)
-
 
  fstTrip :: HsType -> Triple
  fstTrip (Row x y) = x
@@ -186,7 +185,7 @@
  mapovert f EndPointr = EndPointr
  mapovert f (Row x y) = Row (f x) (mapovert f y)
 
---filter f applied over his list of Rows
+
  filterovert :: (Triple -> Bool) -> HsType -> HsType
  filterovert p EndPointr = EndPointr
  filterovert p (Row x y) | (p x) =  Row x (filterovert  p y)
@@ -331,27 +330,79 @@
  mtoInt = \x -> (read x :: Int)
 
  makeTriple :: Key -> Name -> Job -> Triple
- makeTriple k n m =  (k,n,m) 
+ makeTriple k n m =  (k,n,m)
 
+ findind :: String -> Char -> Int
+ findind [x]  c     |  x == c = 0
+                    | otherwise = 1  
+ findind (x:xs)  c  |   x == c = 0
+                    | otherwise = 1 + (findind  xs c )
+
+ split :: String -> Int -> (String,String)
+ split s i = ((take i s)   ,  (drop (i+1) s))
+
+ splitString :: String -> Char -> (String, String)
+ splitString str c = split str (findind str c)  
+
+ verify :: String -> Bool
+ verify str = and [isDigit c |    c <- str   ]
+
+ data Err_handler a b = Ok a | Warning  b
+            deriving Show
+
+
+ warning_1 = Warning " Caracterele introduse nu sunt numerice!"
+ warning_2 = Warning " Valoarea introdusa nu este valida !"
+
+ mt :: IO (Err_handler Triple String )
+ mt = getLine >>= \s1 -> if not $ (verify s1) then return  warning_1 else 
+      getLine >>= \s2 -> 
+      getLine >>= \s3 -> let ms = fst (splitString s3 ' ')
+                             jd = snd (splitString s3 ' ')
+                             kk = mtoInt s1
+                             in
+                         return (if ms `elem` ["Brutar","Mecanic", "PilotF1" , "Electrician" ,"Medic"] then
+                                    case ms of
+                                     "Brutar"      -> Ok (kk, s2, Brutar jd)
+                                     "Mecanic"     -> Ok (kk, s2, Mecanic jd)
+                                     "Pilot F1"    -> Ok (kk, s2, PilotF1 jd)
+                                     "Electrician" -> Ok (kk, s2, Electrician jd)
+                                     "Medic"       -> Ok (kk, s2, Medic jd)                                    
+                                     else warning_2 )
+    
+ transf :: Err_handler a b -> a
+ transf (Ok x) =  x    
+
+
+ insertNew insert_f table = mt >>= \ t -> return ( insert_f (transf t) table)      
+--cons  --insertatindex
+
+ 
  --given a Job, makes a new IO Triple 
- makeTrip :: Job -> IO (Int,String,Job)
- makeTrip msr = getLine >>= \k -> getLine >>= \n -> return ((mtoInt k) , n , msr) 
+ makeT_j :: Job -> IO Triple
+ makeT_j msr = getLine >>= \k -> getLine >>= \n -> return ((mtoInt k) , n , msr) 
 
 
  mAddElem :: (Triple -> HsType -> HsType) ->
                Job -> HsType -> IO HsType
  mAddElem addf t_msr table = pure cons <*> 
-                            (makeTrip t_msr) <*>
+                            (makeT_j t_msr) <*>
                              pure table
  --cons --addToEnd --insert at beginning or the end
 
 
- minsertion :: (Triple -> Int -> HsType -> HsType) ->
-                        Job -> HsType -> IO HsType
- minsertion insrtf t_msr table = pure insrtf <*>
-                                (makeTrip t_msr) <*>
-                                (fmap mtoInt $ getLine) <*>
-                                pure table
+
+ minsertion  table = pure insertAtIndex <*>
+                                 (putStrLn "Introduceti datele :" >>
+                                 (mt >>= \t -> fmap transf $ return t )) <*>
+                                 (putStr "La indexul.." >>
+                                 ( fmap (fmap mtoInt) $ (getLine >>= \n -> if verify n then 
+                                                                       return (Just n)
+                                                                      else return Nothing ) )) >>=
+                                 ( \m -> return ((\ (Just x) -> x) $ m) ) <*>
+                                     pure table  
+                                    --unfinished!!!!!!!
+                                
  ---insertAtIndex :: Triple -> Int -> HsType -> HsType
 
  
