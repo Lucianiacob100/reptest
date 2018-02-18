@@ -49,11 +49,15 @@
      mconcat lst = foldr tablejoin mempty  lst
      --mconcat lst = foldr1 tablejoin   lst
      --mconcat lst = foldr mappend mempty  lst
-     
+
+
+
+   --class Selectors which implements three selectors methods  
+  --for any data of kind * -> * -> * -> *    
  class  Selectors s where
-     first :: Elements a => s a b c -> a
-     sec   :: Elements b => s a b c -> b
-     thrd  :: Elements c => s a b c -> c 
+     first ::  (Elements a , Elements b , Elements c) =>  s a b c -> a
+     sec   ::  (Elements a , Elements b , Elements c) =>  s a b c -> b
+     thrd  ::  (Elements a , Elements b , Elements c) =>  s a b c -> c 
 
  instance  Selectors (,,)  where
      first (a,b,c) = (\(x,y,z) -> a) $ (a,b,c)
@@ -62,8 +66,18 @@
 
      thrd (a,b,c)  = (\(x,y,z) -> z) $ (a,b,c)
 
-     
--------------------------------
+
+ --data container for the selector methods
+ data Selec s a b c e = S {
+                  s1 :: s e b c -> e  ,  
+                  s2 :: s a e c -> e  ,
+                  s3 :: s a b e -> e 
+                 }
+ t :: (Selectors s ,  Elements e) => Selec s Int String Job e 
+ t = S first sec thrd
+
+
+----------------
 
  class Elements a where
      triv :: a -> a
@@ -145,10 +159,6 @@
  cons :: (a, b, c) -> Table a b c -> Table a b c
  cons trip (Row x y) = Row trip (Row x y)
 
- fstTrip :: HsType -> Triple
- fstTrip (Row x y) = x
- fstTrip EndPointr = nilTriple
-
  addToEnd :: (Eq a, Eq b, Eq c) => (a, b, c) -> Table a b c -> Table a b c
  addToEnd trip EndPointr = Row trip EndPointr
  addToEnd trip (Row x y) | y == EndPointr =  (Row x (Row trip EndPointr))
@@ -164,21 +174,9 @@
  firstntup n (Row x y) = [x] ++ (firstntup (n-1) y)
  firstntup n EndPointr = [nilTriple]
 
-
- insertAtIndex :: Triple -> Int -> HsType -> HsType
- insertAtIndex trip nPos EndPointr   = EndPointr
- insertAtIndex trip nPos (Row x y)  | nPos == 0 = Row trip (Row x y) 
-                                    | nPos == 1 = Row x (Row trip y)
-                                    | otherwise = Row x (insertAtIndex trip (nPos-1) y)      
   
  ---------------------------------------
 -------------------------------------------------------------------
-
-
- getTriPos :: Int -> HsType -> Triple
- getTriPos 0 table = fstTrip table
- getTriPos n (Row x y) = getTriPos (n-1) y
- getTriPos n EndPointr = nilTriple
 
 ---------------------------------------------------
  mapovert :: (Triple -> Triple ) -> HsType -> HsType
@@ -203,9 +201,6 @@
  duplicateentries  i j (Row x y )| y == EndPointr = [(0,-1)]
  duplicateentries i j (Row x y) = (searchfordup i j x (Row x y)) : (duplicateentries (i+1) (j+1) y)
   
- -- onlyduplicates :: HsType -> [(Int,Int)] 
- --onlyduplicates  table = filter (/= (0,-1) ) (duplicateentries 0 1 table)
-
  removedup :: HsType -> HsType                             
  removedup   EndPointr = EndPointr  
  removedup (Row x y) = let
@@ -283,18 +278,63 @@
                                          else (searchForElem e sel y) 
                                                       
 
--------------------------------------------------------------------------
--------------------------------------------------------------------------
---get the key from a triple at nth position
- getKey :: Int ->  HsType -> Key 
- getKey n table = first . getTriPos n $ table
+-----------     -----         -----     -----------------------------
 
- getName :: Int -> HsType -> Name
- getName n table = sec . getTriPos n $ table
+ fstTrip :: HsType -> Triple
+ fstTrip (Row x y) = x
+ fstTrip EndPointr = nilTriple
 
- getJob :: Int -> HsType -> Job
- getJob n table = thrd . getTriPos n $ table
 
+
+ getTriPos :: Int -> HsType -> Triple
+ getTriPos 0 table = fstTrip table
+ getTriPos n (Row x y) = getTriPos (n-1) y
+ getTriPos n EndPointr = nilTriple
+
+
+ getTheE ::  Elements a  => Int -> (Triple -> a ) -> HsType ->  a
+ getTheE n selec table = selec . getTriPos n $ table
+       
+   
+ pullLeft :: (Either a b ) -> a
+ pullLeft (Left a)  = a
+            
+ getFname :: Selectors s =>  IO (Either 
+                                 (Either
+                                  (s Int String Job -> Int)
+                                  (s Int String Job -> String) )
+                                 ( s Int String Job -> Job))
+ getFname =  getLine >>= \a ->  return (case a of
+                                            "first" -> Left (Left   (s1 t)) 
+                                            "sec"  ->   Left (Right (s2 t))
+                                            "thrd" ->   Right (s3 t) )
+ 
+ pullV :: Selectors s => (Either
+                           (Either 
+                             (s Int String Job -> Int)
+                             (s Int String Job -> String) )
+                           ( s Int String Job -> Job)) ->
+                        (s Int String Job) -> (Either (Either Int String) Job)    
+ pullV (Left (Left f)) = \t -> Left (Left (f t))
+ pullV (Left (Right f)) = \t -> Left (Right (f t))
+ pullV (Right f)       = \t -> (Right (f t))
+
+
+ transfrm :: Either (Either a b ) c -> a
+ transfrm (Left (Left a)) = a
+
+ transfrm' :: Either (Either a b ) c -> b
+ transfrm' (Left (Right a)) = a
+
+ transfrm'' :: Either (Either a b ) c -> c
+ transfrm'' (Right a) = a
+
+ fng :: Selectors s =>
+     s Int String Job -> IO (Either (Either Int String) Job)
+ fng trip = putStrLn "Introduceti selectorul:" >> getFname >>= \f -> return (pullV f trip) 
+
+
+  
 ------------------------------------------------------------------------------
      
  fltFirst :: Elements a =>  Int ->  HsType-> (Triple -> a) -> [a]
@@ -305,16 +345,21 @@
  printElm [] = print ""
  printElm (x:xs) = return (x:xs) >>= \s -> print x >> printElm xs
 
+
  printRows :: [(Triple)] -> IO()
  printRows [] = putStr "\n"
  printRows (x:xs) = return (x:xs) >>= 
-                    \s -> putStr (show (first x)) >>
+                    \s -> putStr (show ((s1  $ t) x)) >>
                     putStr "\t" >>
-                    putStr (sec x) >> 
+                    putStr ((s2 $ t) x) >> 
                     putStr "\t" >>
-                    putStr (show (thrd x)) >>
+                    putStr (show ((s3 $ t) x)) >>
                     putStr "\n" >>
                     printRows xs
+
+ printTable :: Int -> HsType -> IO ()
+ printTable n table = printRows . firstntup n $ table
+
 
  printSelected :: Show a => Int-> HsType -> (Triple -> a) -> IO ()
  printSelected n table selec =  printElm $ ((firstntup n table) >>= \e -> [(selec e)]) 
@@ -348,8 +393,7 @@
  verify str = and [isDigit c |    c <- str   ]
 
  data Err_handler a b = Ok a | Warning  b
-            deriving Show
-
+            deriving (Show,Eq)
 
  warning_1 = Warning " Caracterele introduse nu sunt numerice!"
  warning_2 = Warning " Valoarea introdusa nu este valida !"
@@ -370,10 +414,10 @@
                                      "Medic"       -> Ok (kk, s2, Medic jd)                                    
                                      else warning_2 )
     
- transf :: Err_handler a b -> a
+ --transf :: Err_handler a b -> a
  transf (Ok x) =  x    
-
-
+ transf _ = nilTriple
+ 
  insertNew insert_f table = mt >>= \ t -> return ( insert_f (transf t) table)      
 --cons  --insertatindex
 
@@ -389,6 +433,14 @@
                             (makeT_j t_msr) <*>
                              pure table
  --cons --addToEnd --insert at beginning or the end
+
+ 
+
+ insertAtIndex :: Triple -> Int -> HsType -> HsType
+ insertAtIndex trip nPos EndPointr   = EndPointr
+ insertAtIndex trip nPos (Row x y)  | nPos == 0 = Row trip (Row x y) 
+                                    | nPos == 1 = Row x (Row trip y)
+                                    | otherwise = Row x (insertAtIndex trip (nPos-1) y)     
 
 
  minsertion  table = pure insertAtIndex <*>
@@ -413,26 +465,21 @@
                       pure table 
  --takeFirst --droptFirst --removeAtIndex dropLast
 
- mgetElem :: Elements a => ( Int ->  HsType -> a) ->
-                                     HsType -> IO a              
- mgetElem fn table = pure fn <*> 
-                     ( fmap mtoInt $ getLine) <*>
-                      pure table 
- --getKey --getName --getJob
+
 
 -------------------------------------------------
 
  filterallkeys :: HsType-> [Key]
  filterallkeys EndPointr = []
- filterallkeys (Row x y) = (first x) : (filterallkeys y)
+ filterallkeys (Row x y) = ((s1 $ t) x) : (filterallkeys y)
 
  filterallnames :: HsType -> [Name]
  filterallnames EndPointr = []
- filterallnames (Row x y)  = (sec x) : (filterallnames y)
+ filterallnames (Row x y)  = ((s2 $ t) x) : (filterallnames y)
 
  filteralljobs :: HsType -> [Job]
  filteralljobs EndPointr = []
- filteralljobs (Row x y)  = (thrd x) : (filteralljobs y) 
+ filteralljobs (Row x y)  = ((s3 $ t) x) : (filteralljobs y) 
   
  filterkeys :: (Key -> Bool) -> HsType -> [Key]
  filterkeys p table = filter p . filterallkeys $ table
