@@ -1,7 +1,8 @@
  
  import Data.Monoid
  import  Data.Char
- 
+ import Control.Applicative 
+
  {- a table as a linked list of Rows
    ___        ___                        ___________
   | * | ---> | * | --->           * ---> EndPointr  |
@@ -201,6 +202,9 @@
  duplicateentries  i j (Row x y )| y == EndPointr = [(0,-1)]
  duplicateentries i j (Row x y) = (searchfordup i j x (Row x y)) : (duplicateentries (i+1) (j+1) y)
   
+ -- onlyduplicates :: HsType -> [(Int,Int)] 
+ --onlyduplicates  table = filter (/= (0,-1) ) (duplicateentries 0 1 table)
+
  removedup :: HsType -> HsType                             
  removedup   EndPointr = EndPointr  
  removedup (Row x y) = let
@@ -295,46 +299,47 @@
  getTheE ::  Elements a  => Int -> (Triple -> a ) -> HsType ->  a
  getTheE n selec table = selec . getTriPos n $ table
        
-   
- pullLeft :: (Either a b ) -> a
- pullLeft (Left a)  = a
-            
- getFname :: Selectors s =>  IO (Either 
-                                 (Either
-                                  (s Int String Job -> Int)
-                                  (s Int String Job -> String) )
-                                 ( s Int String Job -> Job))
- getFname =  getLine >>= \a ->  return (case a of
-                                            "first" -> Left (Left   (s1 t)) 
-                                            "sec"  ->   Left (Right (s2 t))
-                                            "thrd" ->   Right (s3 t) )
- 
- pullV :: Selectors s => (Either
-                           (Either 
-                             (s Int String Job -> Int)
-                             (s Int String Job -> String) )
-                           ( s Int String Job -> Job)) ->
-                        (s Int String Job) -> (Either (Either Int String) Job)    
- pullV (Left (Left f)) = \t -> Left (Left (f t))
- pullV (Left (Right f)) = \t -> Left (Right (f t))
- pullV (Right f)       = \t -> (Right (f t))
+ data Tri a b  c =  Fs a | Sc b | Th c | Err_
+                             deriving (Show , Eq)
 
 
- transfrm :: Either (Either a b ) c -> a
- transfrm (Left (Left a)) = a
+ getf :: Selectors s => IO (Tri  ((s Key Name Job) -> Key)
+                                 ((s Key Name Job) -> Name)
+                                 ((s Key Name Job) -> Job))
+ getf = getLine >>= \s -> return (case s of
+                                       "key" -> Fs (s1 t)
+                                       "name" -> Sc (s2 t)
+                                       "job"  -> Th (s3 t))
 
- transfrm' :: Either (Either a b ) c -> b
- transfrm' (Left (Right a)) = a
+ mytables :: [(String,HsType)]
+ mytables = [("mytable",mytable) , ("null", EndPointr)]
 
- transfrm'' :: Either (Either a b ) c -> c
- transfrm'' (Right a) = a
-
- fng :: Selectors s =>
-     s Int String Job -> IO (Either (Either Int String) Job)
- fng trip = putStrLn "Introduceti selectorul:" >> getFname >>= \f -> return (pullV f trip) 
+ lookfor :: String -> [(String,HsType)] -> HsType
+ lookfor s (t:ts) | ts == []     = (snd t)
+                  | s == (fst t) = (snd t)
+                  | otherwise    = lookfor s ts
 
 
-  
+ mgetE ::  IO ()
+ mgetE  = putStrLn " DENUMIREA ELEMENTULUI : " >> getf >>= 
+                        \f ->  putStrLn "De la pozitia..:" >>
+                        (fmap mtoInt getLine) >>= 
+                        \i -> putStrLn "Din tabelul..." >>
+                         getLine >>= \tname -> return (lookfor tname mytables) <* 
+                         putStrLn "Rezultatul este..:" >>=
+                         \tab -> return (getTriPos i tab ) >>=
+                         \trip -> return (case f of
+                                             (Fs f)  -> Fs (f trip)
+                                             (Sc f) -> Sc  (f trip)
+                                             (Th f)  -> Th (f trip))>>=
+                         \elem -> print elem >> putStrLn "Doriti sa continuati?" >>
+                         ( let fn =    getChar >>= \c -> case c of
+                                                         'y' -> putStrLn "" >>  mgetE 
+                                                         'n' ->  print "End Of Program"
+                                                         _  -> print "optiune invalida!(Aveti de ales y/n)" >> fn
+                                                   in 
+                                                       fn)
+              
 ------------------------------------------------------------------------------
      
  fltFirst :: Elements a =>  Int ->  HsType-> (Triple -> a) -> [a]
@@ -392,13 +397,13 @@
  verify :: String -> Bool
  verify str = and [isDigit c |    c <- str   ]
 
- data Err_handler a b = Ok a | Warning  b
+ data Err_handler a  = Ok a | Warning  String
             deriving (Show,Eq)
 
  warning_1 = Warning " Caracterele introduse nu sunt numerice!"
  warning_2 = Warning " Valoarea introdusa nu este valida !"
 
- mt :: IO (Err_handler Triple String )
+ mt :: IO (Err_handler Triple )
  mt = getLine >>= \s1 -> if not $ (verify s1) then return  warning_1 else 
       getLine >>= \s2 -> 
       getLine >>= \s3 -> let ms = fst (splitString s3 ' ')
@@ -490,6 +495,4 @@
  filterjobs :: (Job -> Bool) -> HsType -> [Job]
  filterjobs p table = filter p . filteralljobs $ table
 -------------------------------------------------------------------
-
-
 
