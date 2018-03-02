@@ -68,7 +68,7 @@
      thrd (a,b,c)  = (\(x,y,z) -> z) $ (a,b,c)
 
 
- --data container for the selector methods
+ --data container for the methods of Selector class
  data Selec s a b c e = S {
                   s1 :: s e b c -> e  ,  
                   s2 :: s a e c -> e  ,
