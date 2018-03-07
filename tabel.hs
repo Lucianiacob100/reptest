@@ -2,6 +2,7 @@
  import Data.Monoid
  import  Data.Char
  import Control.Applicative 
+ import Data.Maybe
 
  {- a table as a linked list of Rows
    ___        ___                        ___________
@@ -68,7 +69,7 @@
      thrd (a,b,c)  = (\(x,y,z) -> z) $ (a,b,c)
 
 
- --data container for the methods of Selector class
+ --data container for the methods of selector class
  data Selec s a b c e = S {
                   s1 :: s e b c -> e  ,  
                   s2 :: s a e c -> e  ,
@@ -314,20 +315,25 @@
  mytables :: [(String,HsType)]
  mytables = [("mytable",mytable) , ("null", EndPointr)]
 
- lookfor :: String -> [(String,HsType)] -> HsType
- lookfor s (t:ts) | ts == []     = (snd t)
-                  | s == (fst t) = (snd t)
+ lookfor :: String -> [(String,HsType)] -> Maybe HsType
+ lookfor s (t:ts) | ts == []   && (s /= (fst t))  = Nothing
+                  | s == (fst t) = Just (snd t)
                   | otherwise    = lookfor s ts
 
 
  mgetE ::  IO ()
  mgetE  = putStrLn " DENUMIREA ELEMENTULUI : " >> getf >>= 
                         \f ->  putStrLn "De la pozitia..:" >>
-                        (fmap mtoInt getLine) >>= 
-                        \i -> putStrLn "Din tabelul..." >>
-                         getLine >>= \tname -> return (lookfor tname mytables) <* 
-                         putStrLn "Rezultatul este..:" >>=
-                         \tab -> return (getTriPos i tab ) >>=
+                         getLine >>= 
+                        \i -> if not $ verify i then ( (print "introduceti doar caractere numerice") >> mgetE ) 
+                               else ( return (mtoInt i) <*
+                        (putStrLn "Din tabelul...") >>=
+                        \ind -> getLine >>= \tname -> ( let r = (lookfor tname mytables) in 
+            case r of
+            Nothing -> print "Exit"
+            _       -> ( return (fromJust r) <*
+                         print "Rezultatul cautarii este ..: " >>= 
+                         \tab -> return (getTriPos ind tab ) >>=
                          \trip -> return (case f of
                                              (Fs f)  -> Fs (f trip)
                                              (Sc f) -> Sc  (f trip)
@@ -338,7 +344,8 @@
                                                          'n' ->  print "End Of Program"
                                                          _  -> print "optiune invalida!(Aveti de ales y/n)" >> fn
                                                    in 
-                                                       fn)
+                                                       fn))) )
+                  
               
 ------------------------------------------------------------------------------
      
@@ -495,4 +502,3 @@
  filterjobs :: (Job -> Bool) -> HsType -> [Job]
  filterjobs p table = filter p . filteralljobs $ table
 -------------------------------------------------------------------
-
