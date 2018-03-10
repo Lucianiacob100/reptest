@@ -274,14 +274,6 @@
  -------------------------------------------------------------------
 ---------------------------------------------------------------------
 
- searchForElem :: (Elements a, Eq a) => a -> (Triple -> a ) -> HsType -> Maybe Triple
- searchForElem e sel EndPointr = Nothing
- searchForElem e sel (Row x y) = (Just e) >>= 
-                                 \el -> (Just (sel x)) >>=
-                                 \ en -> if el == en then 
-                                         return x
-                                         else (searchForElem e sel y) 
-                                                      
 
 -----------     -----         -----     -----------------------------
 
@@ -312,13 +304,27 @@
                                        "name" -> Sc (s2 t)
                                        "job"  -> Th (s3 t))
 
- mytables :: [(String,HsType)]
- mytables = [("mytable",mytable) , ("null", EndPointr)]
+ mytables :: [(String, (HsType, [String])) ]
+ mytables = [("mytable", (mytable, ["key" ,"name" , "job"])) ]
 
- lookfor :: String -> [(String,HsType)] -> Maybe HsType
- lookfor s (t:ts) | ts == []   && (s /= (fst t))  = Nothing
-                  | s == (fst t) = Just (snd t)
-                  | otherwise    = lookfor s ts
+ lookforTb :: String -> [(String, (HsType, [String])) ]-> Maybe (HsType, [String])
+ lookforTb s (t:ts) | ts == []   && (s /=  fst  t)  = Nothing
+                    | s == (fst  t) = Just (snd  t)
+                    | otherwise    = lookforTb s ts
+
+
+
+
+ searchForElem :: (Elements a, Eq a) => a -> (Triple -> a ) -> HsType -> Maybe Triple
+ searchForElem e sel EndPointr = Nothing
+ searchForElem e sel (Row x y) = (Just e) >>= 
+                                 \el -> (Just (sel x)) >>=
+                                 \ en -> if el == en then 
+                                         return x
+                                         else (searchForElem e sel y) 
+                                                      
+
+
 
 
  mgetE ::  IO ()
@@ -328,10 +334,18 @@
                         \i -> if not $ verify i then ( (print "introduceti doar caractere numerice") >> mgetE ) 
                                else ( return (mtoInt i) <*
                         (putStrLn "Din tabelul...") >>=
-                        \ind -> getLine >>= \tname -> ( let r = (lookfor tname mytables) in 
+                        \ind -> getLine >>= \tname -> ( let r =  (case (lookforTb tname mytables) of
+                                                                 Nothing             -> Nothing
+                                                                 (Just (a,(x:xs)))   ->  Just (a,(x:xs))  )
+                                                            tupl =fromJust r 
+                                                            hst = fst tupl
+                                                            len = nrOfRows  hst
+                                                            lst = snd tupl
+                                                               
+                                       in 
             case r of
-            Nothing -> print "Exit"
-            _       -> ( return (fromJust r) <*
+            Nothing -> print "Numele nu a fost gasit in tabel"
+            _       -> ( return hst <*
                          print "Rezultatul cautarii este ..: " >>= 
                          \tab -> return (getTriPos ind tab ) >>=
                          \trip -> return (case f of
