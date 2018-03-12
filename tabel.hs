@@ -1,9 +1,9 @@
  
  import Data.Monoid
- import  Data.Char
+ import Data.Char
  import Control.Applicative 
  import Data.Maybe
-
+ import Data.Text.Unsafe
  {- a table as a linked list of Rows
    ___        ___                        ___________
   | * | ---> | * | --->           * ---> EndPointr  |
@@ -296,10 +296,10 @@
                              deriving (Show , Eq)
 
 
- getf :: Selectors s => IO (Tri  ((s Key Name Job) -> Key)
+ getf :: Selectors s => String -> IO (Tri  ((s Key Name Job) -> Key)
                                  ((s Key Name Job) -> Name)
                                  ((s Key Name Job) -> Job))
- getf = getLine >>= \s -> return (case s of
+ getf ={- getLine >>= -} \s -> return (case s of
                                        "key" -> Fs (s1 t)
                                        "name" -> Sc (s2 t)
                                        "job"  -> Th (s3 t))
@@ -324,11 +324,20 @@
                                          else (searchForElem e sel y) 
                                                       
 
+ e1 = (print "Introduceti doar caractere numerice") :: IO ()
+ e2 = (print "Tabelul nu exista") :: IO ()
 
 
+ errors :: [(IO())]
+ errors = [
+        
+       e1 , e2
+                ]
 
- mgetE ::  IO ()
- mgetE  = putStrLn " DENUMIREA ELEMENTULUI : " >> getf >>= 
+ mgetE :: IO ()
+ mgetE  = putStrLn " DENUMIREA ELEMENTULUI : " >> getLine >>=
+                         \densl -> return densl >>= 
+                         getf >>= 
                         \f ->  putStrLn "De la pozitia..:" >>
                          getLine >>= 
                         \i -> if not $ verify i then ( (print "introduceti doar caractere numerice") >> mgetE ) 
@@ -341,11 +350,11 @@
                                                             hst = fst tupl
                                                             len = nrOfRows  hst
                                                             lst = snd tupl
-                                                               
                                        in 
             case r of
             Nothing -> print "Numele nu a fost gasit in tabel"
-            _       -> ( return hst <*
+            _       -> if not $ densl `elem` lst then  print "ERR selector gresit" else
+                         ( return hst <*
                          print "Rezultatul cautarii este ..: " >>= 
                          \tab -> return (getTriPos ind tab ) >>=
                          \trip -> return (case f of
@@ -418,14 +427,39 @@
  verify :: String -> Bool
  verify str = and [isDigit c |    c <- str   ]
 
+{-
  data Err_handler a  = Ok a | Warning  String
             deriving (Show,Eq)
 
  warning_1 = Warning " Caracterele introduse nu sunt numerice!"
  warning_2 = Warning " Valoarea introdusa nu este valida !"
 
- mt :: IO (Err_handler Triple )
- mt = getLine >>= \s1 -> if not $ (verify s1) then return  warning_1 else 
+-}
+
+ data Errors =  E1 | E2 | E3 | E4 | E5 deriving Show
+
+ data Functionality a = Sf a | Er Errors deriving Show
+
+ instance Functor Functionality where
+    fmap f (Sf a) = (Sf (f a))
+    fmap f (Er a) = (Er a)
+
+
+
+ instance Applicative Functionality where
+    pure a = (Sf a)
+    (Sf f) <*> (Sf a) = (Sf (f a))
+    (Sf f) <*> (Er a) = (Er a)
+
+ instance Monad Functionality where
+    return x = Sf x
+    (Sf x) >>= f = f x
+             -- a -> (SF a)
+    (Er e) >>= f  = (Er e)
+
+
+ mt :: IO (Functionality Triple)
+ mt = getLine >>= \s1 -> if not $ (verify s1) then return  (Er E1) else 
       getLine >>= \s2 -> 
       getLine >>= \s3 -> let ms = fst (splitString s3 ' ')
                              jd = snd (splitString s3 ' ')
@@ -433,18 +467,21 @@
                              in
                          return (if ms `elem` ["Brutar","Mecanic", "PilotF1" , "Electrician" ,"Medic"] then
                                     case ms of
-                                     "Brutar"      -> Ok (kk, s2, Brutar jd)
-                                     "Mecanic"     -> Ok (kk, s2, Mecanic jd)
-                                     "Pilot F1"    -> Ok (kk, s2, PilotF1 jd)
-                                     "Electrician" -> Ok (kk, s2, Electrician jd)
-                                     "Medic"       -> Ok (kk, s2, Medic jd)                                    
-                                     else warning_2 )
+                                     "Brutar"      -> Sf (kk, s2, Brutar jd)
+                                     "Mecanic"     -> Sf (kk, s2, Mecanic jd)
+                                     "Pilot F1"    -> Sf (kk, s2, PilotF1 jd)
+                                     "Electrician" -> Sf (kk, s2, Electrician jd)
+                                     "Medic"       -> Sf (kk, s2, Medic jd)                                    
+                                     else (Er E2))
     
  --transf :: Err_handler a b -> a
- transf (Ok x) =  x    
- transf _ = nilTriple
+ --transf (Ok x) =  x    
+ --transf _ = nilTriple
  
- insertNew insert_f table = mt >>= \ t -> return ( insert_f (transf t) table)      
+
+  --m_cons :: HsType
+ m_cons = pure cons <*> (inlinePerformIO mt) <*> pure mytable
+ --insertNew insert_f table = mt >>= \ t -> return ( insert_f (transf t) table)      
 --cons  --insertatindex
 
  
@@ -468,7 +505,7 @@
                                     | nPos == 1 = Row x (Row trip y)
                                     | otherwise = Row x (insertAtIndex trip (nPos-1) y)     
 
-
+{-
  minsertion  table = pure insertAtIndex <*>
                                  (putStrLn "Introduceti datele :" >>
                                  (mt >>= \t -> fmap transf $ return t )) <*>
@@ -480,7 +517,10 @@
                                                                        return (Just n)
                                                                       else return Nothing ) )))  <*>
                                      pure table  
-                                
+-}           
+
+
+                     
  ---insertAtIndex :: Triple -> Int -> HsType -> HsType
  
 
