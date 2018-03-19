@@ -4,6 +4,9 @@
  import Control.Applicative 
  import Data.Maybe
  import Data.Text.Unsafe
+ import Control.Monad
+ --import Data.Bifunctor
+
  {- a table as a linked list of Rows
    ___        ___                        ___________
   | * | ---> | * | --->           * ---> EndPointr  |
@@ -51,7 +54,6 @@
      mconcat lst = foldr tablejoin mempty  lst
      --mconcat lst = foldr1 tablejoin   lst
      --mconcat lst = foldr mappend mempty  lst
-
 
 
    --class Selectors which implements three selectors methods  
@@ -219,6 +221,8 @@
  foldrighttable fn en  EndPointr = en
  foldrighttable fn en (Row x y) =  (fn x (foldrighttable fn en y)) 
  
+ applypred   :: ((Key, Name, Job) -> Triple -> Bool) ->
+                 HsType -> Table Key Name Job
  applypred op table = Row (fstTrip table) 
                     (foldrighttable (\ a b  ->  if   (op a  (fstTrip table)) then b
                                                  else (Row a b))
@@ -325,13 +329,13 @@
                                                       
 
  e1 = (print "Introduceti doar caractere numerice") :: IO ()
- e2 = (print "Tabelul nu exista") :: IO ()
-
+ e2 = (print "Denumirea tabelului nu exista") :: IO ()
+ e3 = (print "Elementul nu face parte din acest tabel") :: IO ()
 
  errors :: [(IO())]
  errors = [
         
-       e1 , e2
+       e1 , e2 , e3
                 ]
 
  mgetE :: IO ()
@@ -340,7 +344,7 @@
                          getf >>= 
                         \f ->  putStrLn "De la pozitia..:" >>
                          getLine >>= 
-                        \i -> if not $ verify i then ( (print "introduceti doar caractere numerice") >> mgetE ) 
+                        \i -> if not $ verify i then ( e1 >> mgetE ) 
                                else ( return (mtoInt i) <*
                         (putStrLn "Din tabelul...") >>=
                         \ind -> getLine >>= \tname -> ( let r =  (case (lookforTb tname mytables) of
@@ -352,8 +356,8 @@
                                                             lst = snd tupl
                                        in 
             case r of
-            Nothing -> print "Numele nu a fost gasit in tabel"
-            _       -> if not $ densl `elem` lst then  print "ERR selector gresit" else
+            Nothing -> e2
+            _       -> if not $ densl `elem` lst then  e3 else
                          ( return hst <*
                          print "Rezultatul cautarii este ..: " >>= 
                          \tab -> return (getTriPos ind tab ) >>=
@@ -427,14 +431,6 @@
  verify :: String -> Bool
  verify str = and [isDigit c |    c <- str   ]
 
-{-
- data Err_handler a  = Ok a | Warning  String
-            deriving (Show,Eq)
-
- warning_1 = Warning " Caracterele introduse nu sunt numerice!"
- warning_2 = Warning " Valoarea introdusa nu este valida !"
-
--}
 
  data Errors =  E1 | E2 | E3 | E4 | E5 deriving Show
 
@@ -474,28 +470,22 @@
                                      "Medic"       -> Sf (kk, s2, Medic jd)                                    
                                      else (Er E2))
     
- --transf :: Err_handler a b -> a
- --transf (Ok x) =  x    
- --transf _ = nilTriple
- 
 
-  --m_cons :: HsType
+
+ m_cons :: Functionality (Table Key Name Job) 
  m_cons = pure cons <*> (inlinePerformIO mt) <*> pure mytable
- --insertNew insert_f table = mt >>= \ t -> return ( insert_f (transf t) table)      
---cons  --insertatindex
-
  
- --given a Job, makes a new IO Triple 
- makeT_j :: Job -> IO Triple
- makeT_j msr = getLine >>= \k -> getLine >>= \n -> return ((mtoInt k) , n , msr) 
+ get_Int :: String -> IO Int
+ get_Int msg  = ((\m -> putStrLn m >> getLine) >=> (\s -> return $ mtoInt s)) msg 
 
 
- mAddElem :: (Triple -> HsType -> HsType) ->
-               Job -> HsType -> IO HsType
- mAddElem addf t_msr table = pure cons <*> 
-                            (makeT_j t_msr) <*>
-                             pure table
- --cons --addToEnd --insert at beginning or the end
+--m_inserTInd :: HsType -> IO (Functionality HsType)
+ m_insertAtInd table = fmap pure (pure insertAtIndex) <*
+                           putStrLn "Intruduceti un rand nou" >>=
+                           \func -> mt >>= 
+                            \ newtrip -> putStrLn " La indexul " >>
+                              fmap pure (get_Int "Introduceti indexul") >>=
+                             \i -> return (func <*> newtrip <*> i <*> pure table)
 
  
 
@@ -505,23 +495,10 @@
                                     | nPos == 1 = Row x (Row trip y)
                                     | otherwise = Row x (insertAtIndex trip (nPos-1) y)     
 
-{-
- minsertion  table = pure insertAtIndex <*>
-                                 (putStrLn "Introduceti datele :" >>
-                                 (mt >>= \t -> fmap transf $ return t )) <*>
-                                 (putStr "La indexul.." >> (
-                                  fmap (\e -> case e of
-                                              (Just n) -> n
-                                              _ -> -1 )
-                                 ( fmap (fmap mtoInt) $ (getLine >>= \n -> if verify n then 
-                                                                       return (Just n)
-                                                                      else return Nothing ) )))  <*>
-                                     pure table  
--}           
 
 
                      
- ---insertAtIndex :: Triple -> Int -> HsType -> HsType
+ --insertAtIndex :: Triple -> Int -> HsType -> HsType
  
 
  subtable :: (Int -> HsType -> HsType)->
