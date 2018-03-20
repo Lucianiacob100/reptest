@@ -5,7 +5,7 @@
  import Data.Maybe
  import Data.Text.Unsafe
  import Control.Monad
- --import Data.Bifunctor
+ import Data.Bifunctor
 
  {- a table as a linked list of Rows
    ___        ___                        ___________
@@ -59,12 +59,12 @@
    --class Selectors which implements three selectors methods  
   --for any data of kind * -> * -> * -> *    
  class  Selectors s where
-     first ::  (Elements a , Elements b , Elements c) =>  s a b c -> a
+     frst  ::  (Elements a , Elements b , Elements c) =>  s a b c -> a
      sec   ::  (Elements a , Elements b , Elements c) =>  s a b c -> b
      thrd  ::  (Elements a , Elements b , Elements c) =>  s a b c -> c 
 
  instance  Selectors (,,)  where
-     first (a,b,c) = (\(x,y,z) -> a) $ (a,b,c)
+     frst  (a,b,c) = (\(x,y,z) -> a) $ (a,b,c)
 
      sec (a,b,c)   = (\(x,y,z) -> y) $ (a,b,c)
 
@@ -78,7 +78,7 @@
                   s3 :: s a b e -> e 
                  }
  t :: (Selectors s ,  Elements e) => Selec s Int String Job e 
- t = S first sec thrd
+ t = S frst  sec thrd
 
 
 ----------------
@@ -104,8 +104,8 @@
      nrOfRows      :: a -> Int
      tablejoin     :: Eq a => a -> a -> a
      removeAtIndex :: Int -> a -> a
-     takeFirst     :: Int -> a -> a
-     dropFirst     :: Int -> a -> a
+     takefrst      :: Int -> a -> a
+     dropfrst      :: Int -> a -> a
      removeElemE   :: Eq a =>  a -> a 
      dropLast      :: Eq a => Int -> a -> a
      slicetable    :: Eq a =>  a -> Int  -> Int -> Maybe a      
@@ -128,15 +128,15 @@
                                    |otherwise = Row x (removeAtIndex (nPos-1) y)   
 
      
-      takeFirst _ EndPointr = EndPointr
-      takeFirst ind (Row x y) | ind == 0 = EndPointr
-                              |otherwise = (Row x (takeFirst (ind - 1) y)) 
+      takefrst  _ EndPointr = EndPointr
+      takefrst  ind (Row x y) | ind == 0 = EndPointr
+                              |otherwise = (Row x (takefrst  (ind - 1) y)) 
 
 
-      dropFirst _ EndPointr   = EndPointr
-      dropFirst ind table      | ind == 0  = table
-      dropFirst ind (Row x y)  | ind == 1 = y
-                               |otherwise = dropFirst (ind-1) y  
+      dropfrst  _ EndPointr   = EndPointr
+      dropfrst  ind table      | ind == 0  = table
+      dropfrst  ind (Row x y)  | ind == 1 = y
+                               |otherwise = dropfrst  (ind-1) y  
 
       removeElemE (Row x y) | y == EndPointr = EndPointr
                             |otherwise = Row x (removeElemE y)
@@ -150,7 +150,7 @@
 
       slicetable  (Row x y) ind1 ind2 | ind1 > ind2  = Nothing
       slicetable  (Row x y) ind1 ind2 | ind1 == ind2 = Just (Row x EndPointr)
-                                      |otherwise     = Just ((dropFirst ind1) . 
+                                      |otherwise     = Just ((dropfrst  ind1) . 
                                                          (dropLast (l - ind2))  $ (Row x y))
                                     where l = nrOfRows (Row x y)
 
@@ -211,10 +211,10 @@
  removedup :: HsType -> HsType                             
  removedup   EndPointr = EndPointr  
  removedup (Row x y) = let
-    filterbyfirst :: HsType -> HsType
-    filterbyfirst EndPointr = EndPointr
-    filterbyfirst (Row  x y) = Row x (filterovert (/= x) y)
-             in  filterbyfirst  (Row x (removedup  y))
+    filterbyfrst  :: HsType -> HsType
+    filterbyfrst  EndPointr = EndPointr
+    filterbyfrst  (Row  x y) = Row x (filterovert (/= x) y)
+             in  filterbyfrst   (Row x (removedup  y))
 
 
 
@@ -255,8 +255,8 @@
 
 
  searchforkey :: Key -> HsType -> Int --returns an index
- searchforkey key (Row x y) |(y == EndPointr) && ((first x) /= key) = 1
-                            |key == (first x) = 0
+ searchforkey key (Row x y) |(y == EndPointr) && ((frst  x) /= key) = 1
+                            |key == (frst  x) = 0
                             |otherwise = 1 + searchforkey key y
 
  keyexists :: Key -> HsType -> Bool
@@ -376,8 +376,8 @@
               
 ------------------------------------------------------------------------------
      
- fltFirst :: Elements a =>  Int ->  HsType-> (Triple -> a) -> [a]
- fltFirst n table selec = (firstntup n table) >>= \ e -> [(selec e)]
+ fltfrst  :: Elements a =>  Int ->  HsType-> (Triple -> a) -> [a]
+ fltfrst  n table selec = (firstntup n table) >>= \ e -> [(selec e)]
 -----uses the filterall functions
 
  printElm :: Show a => [a] -> IO ()
@@ -471,13 +471,18 @@
                                      else (Er E2))
     
 
-
- m_cons :: Functionality (Table Key Name Job) 
- m_cons = pure cons <*> (inlinePerformIO mt) <*> pure mytable
- 
+{-
+ --m_cons :: Functionality (Table Key Name Job) 
+ m_cons =  case (inlinePerformIO mt) of 
+           (Sf a) -> pure cons 
+           _      -> 
+  
+              <*> pure mytable
+ -}
  get_Int :: String -> IO Int
  get_Int msg  = ((\m -> putStrLn m >> getLine) >=> (\s -> return $ mtoInt s)) msg 
 
+ 
 
 --m_inserTInd :: HsType -> IO (Functionality HsType)
  m_insertAtInd table = fmap pure (pure insertAtIndex) <*
@@ -506,7 +511,7 @@
  subtable fn table = pure fn <*> 
                       (fmap mtoInt $ getLine) <*> 
                       pure table 
- --takeFirst --droptFirst --removeAtIndex dropLast
+ --takefrst  --droptfrst  --removeAtIndex dropLast
 
 
 
@@ -532,4 +537,14 @@
 
  filterjobs :: (Job -> Bool) -> HsType -> [Job]
  filterjobs p table = filter p . filteralljobs $ table
+
+ filterFF :: Show a => [a] -> [a] -> [ IO() ]
+ filterFF = \ l1 l2 -> zipWith (\ a b  -> putStr (show a) >> putStr "   " >> putStrLn (show b)) l1 l2
+
+
+ printByTwo :: Monad m => [m a] -> m ()
+ printByTwo [] = return  ()
+ printByTwo (a : as) = a >> printByTwo as
+       
+
 -------------------------------------------------------------------
