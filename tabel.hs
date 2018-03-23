@@ -221,7 +221,7 @@
  foldrighttable fn en  EndPointr = en
  foldrighttable fn en (Row x y) =  (fn x (foldrighttable fn en y)) 
  
- applypred   :: ((Key, Name, Job) -> Triple -> Bool) ->
+ applypred   :: (Triple -> Triple -> Bool) ->
                  HsType -> Table Key Name Job
  applypred op table = Row (fstTrip table) 
                     (foldrighttable (\ a b  ->  if   (op a  (fstTrip table)) then b
@@ -238,7 +238,9 @@
  removeduplicates = applypred (==) . remdup
  {--}
 
-
+ foldlefttable :: (t3 -> (t, t1, t2) -> t3) -> t3 -> Table t t1 t2 -> t3
+ foldlefttable fn en EndPointr = en
+ foldlefttable fn en (Row x y) = foldlefttable fn  (fn en x) y
 ---------------------------------------------------------------
 
  searchfortrip :: Triple -> HsType -> Int 
@@ -413,8 +415,6 @@
  mtoInt ::  String ->  Int
  mtoInt = \x -> (read x :: Int)
 
- makeTriple :: Key -> Name -> Job -> Triple
- makeTriple k n m =  (k,n,m)
 
  findind :: String -> Char -> Int
  findind [x]  c     |  x == c = 0
@@ -515,11 +515,12 @@
 
 
 
--------------------------------------------------
-
- filterallkeys :: HsType-> [Key]
+--From a (Table Key Name Job) data type 
+   
+ filterallkeys :: HsType -> [Key]
  filterallkeys EndPointr = []
  filterallkeys (Row x y) = ((s1 $ t) x) : (filterallkeys y)
+ 
 
  filterallnames :: HsType -> [Name]
  filterallnames EndPointr = []
@@ -538,13 +539,20 @@
  filterjobs :: (Job -> Bool) -> HsType -> [Job]
  filterjobs p table = filter p . filteralljobs $ table
 
- filterFF :: Show a => [a] -> [a] -> [ IO() ]
+ filterFF :: (Show a , Show b) => [a] -> [b] -> [ IO() ]
  filterFF = \ l1 l2 -> zipWith (\ a b  -> putStr (show a) >> putStr "   " >> putStrLn (show b)) l1 l2
-
 
  printByTwo :: Monad m => [m a] -> m ()
  printByTwo [] = return  ()
  printByTwo (a : as) = a >> printByTwo as
-       
-
--------------------------------------------------------------------
+     
+ chooseTwo  = getLine >>= \command -> (putStr " --from   " >> getLine ) >>=
+                           \tblname -> (let tp = lookforTb tblname mytables 
+                                            tbn = fst (fromJust tp) in
+                                         case command of
+                                         "key job" -> printByTwo (filterFF (filterallkeys tbn) (filteralljobs tbn))
+                                         "Key name" -> printByTwo ( filterFF (filterallkeys tbn) (filterallnames tbn))
+                                         "name job" ->  printByTwo ( filterFF (filterallkeys tbn) (filterallnames tbn))
+                                         _     ->  putStrLn "Nu se afla in tabel")
+--------------------------   -----------------------------------------
+  {--}
