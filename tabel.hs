@@ -7,7 +7,7 @@
  import Control.Monad
  import Data.Bifunctor
 
- {- a table as a linked list of Rows
+ {- a table as a polymorphic list of Rows
    ___        ___                        ___________
   | * | ---> | * | --->           * ---> EndPointr  |
   |_|_|      |___|         . . . .  .    ___________|
@@ -44,6 +44,10 @@
                 ( Row (5, "Mihai" ,  Medic "oftalmolog")( EndPointr)
                                            ))))))))
 
+ instance Bifunctor (Table a) where
+    bimap f g (Row (a,b,c) _ )  =  Row (a,(f b) ,(g c)) EndPointr
+    first f (Row (a,b,c) _ )  = Row (a, (f b), c) EndPointr                     
+    second g (Row (a,b,c) _ ) = Row (a, b , (g c)) EndPointr
 
  instance (Eq a , Eq b , Eq c) => Monoid (Table a b c) where
     
