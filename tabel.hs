@@ -49,6 +49,7 @@
     first f (Row (a,b,c) _ )  = Row (a, (f b), c) EndPointr                     
     second g (Row (a,b,c) _ ) = Row (a, b , (g c)) EndPointr
 
+
  instance (Eq a , Eq b , Eq c) => Monoid (Table a b c) where
     
      mempty  = EndPointr
@@ -183,9 +184,6 @@
  firstntup n EndPointr = [nilTriple]
 
   
- ---------------------------------------
--------------------------------------------------------------------
-
 ---------------------------------------------------
  mapovert :: (Triple -> Triple ) -> HsType -> HsType
  mapovert f EndPointr = EndPointr
@@ -209,17 +207,8 @@
  duplicateentries  i j (Row x y )| y == EndPointr = [(0,-1)]
  duplicateentries i j (Row x y) = (searchfordup i j x (Row x y)) : (duplicateentries (i+1) (j+1) y)
   
- -- onlyduplicates :: HsType -> [(Int,Int)] 
- --onlyduplicates  table = filter (/= (0,-1) ) (duplicateentries 0 1 table)
-
- removedup :: HsType -> HsType                             
- removedup   EndPointr = EndPointr  
- removedup (Row x y) = let
-    filterbyfrst  :: HsType -> HsType
-    filterbyfrst  EndPointr = EndPointr
-    filterbyfrst  (Row  x y) = Row x (filterovert (/= x) y)
-             in  filterbyfrst   (Row x (removedup  y))
-
+ onlyduplicates :: HsType -> [(Int,Int)] 
+ onlyduplicates  table = filter (/= (0,-1) ) (duplicateentries 0 1 table)
 
 
  foldrighttable fn en  EndPointr = en
@@ -281,11 +270,29 @@
                        |otherwise = putStrLn ("Numele se afla in tabel la index " ++ (show n))
            where n = searchforname name table
                  l = nrOfRows table
+
+
+ searchForElem :: (Show a, Elements a, Eq a) => a-> HsType -> (Maybe Triple)
+ searchForElem e  EndPointr = Nothing
+ searchForElem e  (Row x y) =   (Just e) >>= 
+                                 \el ->  (let m = frst x
+                                              n = sec x
+                                              p = thrd x 
+                                                 in
+                                                    ( let pred = (((show el) == (show m)) ||
+                                                                  ((show el) == (show n)) ||
+                                                                  ((show el) ==  (show p)))
+                                                         in
+                                                    if  pred then
+                                                       return x
+                                                    else if (not pred ) && y == EndPointr then          
+                                                        Nothing
+                                                    else (searchForElem e y)))
+
+
+
  -------------------------------------------------------------------
----------------------------------------------------------------------
 
-
------------     -----         -----     -----------------------------
 
  fstTrip :: HsType -> Triple
  fstTrip (Row x y) = x
@@ -322,17 +329,6 @@
                     | s == (fst  t) = Just (snd  t)
                     | otherwise    = lookforTb s ts
 
-
-
-
- searchForElem :: (Elements a, Eq a) => a -> (Triple -> a ) -> HsType -> Maybe Triple
- searchForElem e sel EndPointr = Nothing
- searchForElem e sel (Row x y) = (Just e) >>= 
-                                 \el -> (Just (sel x)) >>=
-                                 \ en -> if el == en then 
-                                         return x
-                                         else (searchForElem e sel y) 
-                                                      
 
  e1 = (print "Introduceti doar caractere numerice") :: IO ()
  e2 = (print "Denumirea tabelului nu exista") :: IO ()
