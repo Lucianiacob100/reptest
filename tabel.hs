@@ -272,22 +272,22 @@
                  l = nrOfRows table
 
 
- searchForElem :: (Show a, Elements a, Eq a) => a-> HsType -> (Maybe Triple)
- searchForElem e  EndPointr = Nothing
- searchForElem e  (Row x y) =   (Just e) >>= 
-                                 \el ->  (let m = frst x
-                                              n = sec x
-                                              p = thrd x 
+ searchForElem :: (Show a, Elements a, Eq a) => a-> HsType -> Int -> Maybe (Triple , Int)
+ searchForElem e  EndPointr z = Nothing 
+ searchForElem e  (Row x y) z =  (Just e) >>= 
+                                  \el ->  (let m = frst x
+                                               n = sec x
+                                               p = thrd x 
                                                  in
                                                     ( let pred = (((show el) == (show m)) ||
                                                                   ((show el) == (show n)) ||
                                                                   ((show el) ==  (show p)))
                                                          in
                                                     if  pred then
-                                                       return x
+                                                        return (x , z)
                                                     else if (not pred ) && y == EndPointr then          
-                                                        Nothing
-                                                    else (searchForElem e y)))
+                                                         Nothing
+                                                    else (searchForElem e y (z+1))))
 
 
 
@@ -482,15 +482,20 @@
  get_Int :: String -> IO Int
  get_Int msg  = ((\m -> putStrLn m >> getLine) >=> (\s -> return $ mtoInt s)) msg 
 
- 
+ get_table :: String -> IO (Maybe (HsType, [String]))
+ get_table msg = ((\m -> putStrLn m >> getLine)  >=>  (\t -> return (lookforTb t mytables ))) msg
+              
 
---m_inserTInd :: HsType -> IO (Functionality HsType)
- m_insertAtInd table = fmap pure (pure insertAtIndex) <*
+ m_insertAtInd :: IO (Functionality HsType)
+ m_insertAtInd  = fmap pure (pure insertAtIndex) <*
                            putStrLn "Intruduceti un rand nou" >>=
                            \func -> mt >>= 
                             \ newtrip -> putStrLn " La indexul " >>
                               fmap pure (get_Int "Introduceti indexul") >>=
-                             \i -> return (func <*> newtrip <*> i <*> pure table)
+                             \i -> let wr_table = (get_table "Numele tabelului pentru inserare" )
+                                       table  = fst . fromJust  . inlinePerformIO $ wr_table --pulls the value from a wrapped table   
+                                             in
+                                 return (func <*> newtrip <*> i <*> (Sf table))
 
  
 
@@ -501,10 +506,6 @@
                                     | otherwise = Row x (insertAtIndex trip (nPos-1) y)     
 
 
-
-                     
- --insertAtIndex :: Triple -> Int -> HsType -> HsType
- 
 
  subtable :: (Int -> HsType -> HsType)->
                     HsType -> IO HsType
