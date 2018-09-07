@@ -100,6 +100,34 @@
 
       m /= n = not $ m == n
 
+  instance Ord Nat where
+    a > b  = case reduce a of
+             Zero -> case reduce b of
+                     Zero -> False
+                     (Succ m) -> False
+                     _        -> True
+             (Succ m) -> case reduce b of
+                         Zero -> True
+                         (Succ n) -> m > n
+                         (Pred n) -> True    
+             (Pred m)  -> case reduce b of
+                          Zero -> False
+                          (Succ _) -> False
+                          (Pred n) ->  m > n
+
+      
+    a < b = (not (a > b)) && (a /= b)
+ 
+    a >= b = (a > b) || (a == b)
+   
+    a <= b  = (a < b) || (a == b)
+
+    max a b = if a > b then a else b
+ 
+    min a b  = if a < b then a else b
+       
+    compare a b = if a > b then GT else LT
+
  
 
       
