@@ -30,32 +30,43 @@
              | otherwise = Succ $ toEnum $ x - 1
 
     fromEnum Zero = 0 --in case of first evaluation is zero
-    fromEnum m  = let rm = reduce m in
-                           case rm of
+    fromEnum m  = 
+                     case reduce m of
                           Zero -> 0 
                           (Pred x) -> (-1) +  (fromEnum x)
                           (Succ x) -> 1 + (fromEnum x)
            
     enumFrom m = (m :) $ enumFrom $ succ m
+
+ instance Bounded Nat where
+    minBound = toEnum (-100)
+    maxBound  = toEnum 100
    
 
  instance Num Nat where
+    fromInteger m  =  let x  = fromIntegral m in
+                          toEnum x  
+
+    signum Zero = 1
+    signum m = case reduce m of
+                    (Pred _) -> (-1)
+                    _ -> 1
+    
     negate Zero  = Zero
     negate (Succ m) = Pred $ negate m
     negate (Pred m) = Succ $ negate m
                      
     abs Zero = Zero
-    abs m  = let rm  = reduce m in
-                       case rm  of
-                       Zero -> Zero
-                       (Pred x) -> negate m
-                       _        -> m
+    abs m  = case reduce m of
+             Zero -> Zero
+             (Pred x) -> negate m
+             _        -> m
 
    
     m + Zero = m
     Zero + m = m
     (Succ m) + (Succ n) =  Succ ((Succ m) + n)
-    (Succ  m) + (Pred n) = (Succ m) + n
+    (Succ  m) + (Pred n) = Pred $ (Succ m) + n
     (Pred m) + (Succ n) = (Succ n) + (Pred m)
     (Pred m) + (Pred n) =  (pred m) + (pred n)  
 
@@ -65,24 +76,27 @@
     (Succ m) - (Pred n) = Succ $ (Succ m) - n   
     (Pred m) - (Succ n) = Pred $  m - (Succ n)  
     (Pred m) - (Pred n) = m  - n
-  
+ 
+
+ 
     m * Zero = Zero
     Zero * m  = Zero
     m * n = let 
-                sign :: Nat -> Char
-                sign nr = case reduce nr of
-                         (Pred _) -> '-'
-                         _        -> '+'
                 mult :: Nat -> Nat -> Nat
                 mult m Zero = Zero
+                mult Zero m = Zero
                 mult m (Succ n) = (m `mult` n) + m
-            in case sign m of
-               '+' -> case sign n of
-                      '+' -> m `mult` n
-                      '-' -> negate $ (mult m) $ abs n
-               '-' -> case sign n of
-                      '+' -> negate $ mult (abs m) n
-                      '-' -> mult (abs m) (abs n)
+            in case signum m of
+               (Pred _ ) -> case signum n of
+                            (Succ _) -> negate $ (abs m) `mult` (abs n)
+                            (Pred _) -> (abs m) `mult`  (abs n)
+               (Succ _ ) -> case signum n of
+                      (Succ _) -> (abs m) `mult` (abs n)
+                      (Pred _) -> negate $ (abs m) `mult` (abs n)
+             
+
+
+
 
  instance Eq Nat where
       Zero == Zero  = True 
@@ -100,7 +114,8 @@
 
       m /= n = not $ m == n
 
-  instance Ord Nat where
+ 
+ instance Ord Nat where
     a > b  = case reduce a of
              Zero -> case reduce b of
                      Zero -> False
@@ -129,12 +144,3 @@
     compare a b = if a > b then GT else LT
 
  
-
-      
-     
- 
- 
-
-
-       
-
