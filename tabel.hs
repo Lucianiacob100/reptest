@@ -31,7 +31,7 @@
  type Name = String
  type Triple = (Key,Name,Job)
  type HsType = Table Key Name Job --declaring type synonyms 
-
+ 
  mytable :: HsType
  mytable =        Row (1, "Lucian",  Brutar "de cativa ani")
                 ( Row (1, "Lucian",  Brutar "de cativa ani") 
