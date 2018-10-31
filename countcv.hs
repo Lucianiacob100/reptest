@@ -1,6 +1,7 @@
-    module Countcv where
+      module Countcv where
 
---    citeste n linii si intoarce o lista
+ import Data.Char
+--    citeste n linii a cate maximum m caracteresi intoarce o lista
 -- cu numarul de vocale si de consoane de pe fiecare linie
  vocale = ['a' , 'e' , 'i' , 'o' , 'u']
  
@@ -11,17 +12,17 @@
 
  prt n = putStrLn $ (++ (show n))  "Introduceti linia cu numarul "
   
- getNchars nc =  if nc == 0 then return []
+ getNchars nc =  if nc == 0   then return []
                  else (fmap (:) getChar) <*> (getNchars (nc - 1))   
 
- llns nl nc = [ getNchars nc | _ <- [1..nl]]
+ llns nl nc = [ getNchars nc | _ <- [1..nl]] --list of lines
  
 
- lf n = [  prt i >> p <* putStrLn "" |  (i,p) <- zip [1..n]  (llns n 4)  ] 
+ lf n m  = [  prt i >> p <* putStrLn "" |  (i,p) <- zip [1..n]  (llns n m)  ] 
 
  pc = fmap $ fmap (\s-> (("vocale : " ++) $ show $ count_l s (lop !! 0)) ++ 
                         ((" consoane : " ++) $ show $ count_l s (lop !! 1)))
 
- run_lf  n =  pc $ sequence $ lf n
+ run_lf  n m =  pc $ sequence $ lf n m
 
 
