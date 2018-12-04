@@ -1,16 +1,39 @@
 
+
+  -- exercises from https://wiki.haskell.org/99_questions
+ import Control.Applicative
  import System.Random
  import Data.Bifunctor
 
 
---ex5
+--ex5 -- different ways to reverse a list 
  reversing [] = []
  reversing [x] = [x]
  reversing ls = [(last ls)] ++ (reversing $ drop 1 $ init ls) ++ [(head ls)]
 
 
  reversing' ls = foldl (\e h  -> h : e ) [] ls
+  -- derived formulas--  reverse  = (foldl  $ flip (:)) []  
+                     --  g = foldl $ flip (:) 
+                     --  h f xs = f [] xs 
+                     --  reverse = h g
 
+ rev [x] = [x] 
+ rev ls  = (foldl $ flip (:)) (rev fh) sh
+                where
+                 m = (length ls) `div` 2
+                 fh = take m ls
+                 sh = drop m ls
+
+ {-  -}
+                     
+ reversing'' [x]  = [x]
+ reversing'' ls = (reversing'' $ sh ls) ++ (reversing'' $ fh ls)
+             where
+                 m = (length ls) `div` 2
+                 fh = take m 
+                 sh = drop m 
+  -- derived from property -- reverse (xs ++ ys) = (reverse ys) ++ (reverse xs) 
 
 --ex 6
 
@@ -259,28 +282,19 @@
 
  m = ["aldo","beat","carla","david","evi","flip","gary","hugo","ida"]
 
---- 28 merge sort
- --a)
- merge :: Ord a => (a -> a -> Bool) ->  [a] -> [a] -> [a]
- merge _ [] [] = []
- merge _ (x:xs) [] = (x:xs)
- merge _  [] (x:xs) = (x:xs)
- merge p (x:xs) (y:ys) | x `p` y = x : merge p  xs (y:ys)
-                       | otherwise = y :  merge p  (x:xs) ys
-
-
- msort :: Ord a => (a -> a -> Bool) -> [a] -> [a]
- msort _ [] = []
- msort _ [x] = [x]
- msort p ls = merge p (msort p (take (ceiling n) ls)) (msort p  (drop (ceiling n) ls))
-                  where n =  fromIntegral (length ls) / 2 
+--- 28 insertion sort
  
- sort_ls ls = msort (\ l1 l2 ->  length l1 < length l2 ) ls   
+
+ insert x xs p = (takeWhile (p x) xs) ++ [x] ++ (dropWhile (p x) xs)
+
+ isort p [x]  = [x] 
+ isort p (x:xs) = insert x (isort p  xs) p
+ 
+
 
 -- b) sorting lists by the frequency of the lengths of the words
-
- lol = ["abc", "de", "fgh", "de", "ijkl", "mn", "o"]
-
+ 
+ lol = ["abc", "de", "fgh","de", "ijkl", "o","abcdb","bcderf","qe", "mn"]
                            
  index_table :: (Eq a, Num a1) => [a] -> Int -> (a, [a1])
  index_table ls ind = let 
@@ -295,9 +309,8 @@
                           if ind == max_size then [] 
                           else (index_table lsz ind :) $ all_indeces lsz (ind + 1) 
 
- sorted_sz lsz = msort (\a b -> (fst a) < (fst b)) lsz
+ sorted_sz lsz = isort (\a b -> (fst a) > (fst b)) lsz
 
- make_set' lst = foldr (\e rl -> e : (let a = fst e in  (filter (\x -> (fst x) /= a) )  rl))  [] lst
 
  retrieve []   _   =     []
  retrieve srted_siz_ls initial_list =  (make_list (head srted_siz_ls) initial_list) :
@@ -306,13 +319,13 @@
              make_list [] _  = [ ]
              make_list (x:xs) init_ls = (init_ls !! x) : (make_list xs init_ls)
 
- 
+
  sort_ls_by_freq ls  = let leng = map length ls
-                           sri  = sorted_sz . make_set' $
+                           sri  = sorted_sz   $
                                     [   (length x , x)       |  (_,x) <-  all_indeces leng 0]
                            filtered_ind = [ x |     (_,x) <- sri   ] 
                      in
-          concat $ retrieve filtered_ind ls
+        make_set $   concat $ retrieve filtered_ind ls
 
 
  --Fermat test for prime numbers
@@ -371,22 +384,28 @@
 
 --ex 40
 
- goldbach nr =   let  rop = [1] ++ sieve [2..nr]
-                      tn = combinations rop 2
+ goldbach nr = if nr == 2 then Just [1,1]
+               else if nr < 2 then Nothing
+               else   
+                Just $ let  rop = [1] ++ sieve [2..nr]
+                            tn = combinations rop 2
                      in
                       head . filter (\t -> t /= []) $ 
                        map  (\ln -> if sum ln  == nr then ln else []) tn
 
 --ex 41
+  -- prints goldbach sums for even numbers
 
- goldb_range a b  =  fmap (\x -> ()) . 
+ goldb_range a b  =  (() <$ ) $  
                      sequence . 
                      fmap putStrLn $ 
                      fmap (\l -> (show $ sum l) ++ " = " ++ 
                                  (show $ l !! 0 ) ++ " + " ++ 
-                                 (show $ l !! 1))
-                         [ goldbach x |  x <- [a..b] , even x]
-                      
-
+                                 (show $ l !! 1)) $
+                     concat 
+                         [ fn $ goldbach x |  x <- [a..b] , even x]
+                   where
+                    fn (Just x) = [x]
+                    fn Nothing  = []   
 
 
