@@ -4,7 +4,7 @@
  import Control.Applicative
  import System.Random
  import Data.Bifunctor
-
+ import Control.Monad
 
 --ex5 -- different ways to reverse a list 
  reversing [] = []
@@ -201,7 +201,8 @@
 
 --all subseqquences of a list
  all_subsequences [] = [[]]
- all_subsequences (x:xs) = (all_subsequences xs) ++ (fmap (x:)(all_subsequences xs) )
+ all_subsequences (x:xs) = let alls =  (all_subsequences xs) 
+                        in  alls ++ (fmap (x:) alls )
 
 --calculates combinatins by filtering
  combinations ls n = [sl | sl <- all_subsequences ls , length sl == n]
@@ -340,12 +341,24 @@
  
  is_prime n  times =  fmap and $ sequence [ fermat_test n | _ <- [1..times]] 
  
---ex 32
+--ex 32 greatest common divisor
+ mtoInt ::  String ->  Int
+ mtoInt = \x -> (read x :: Int)
+ 
+ get_Int :: String -> IO Int
+ get_Int msg  = ((\m -> putStrLn m >> getLine) >=> (\s -> return $ mtoInt s)) msg 
+
  gcd' a b  = let m  = mod a b
               in
             if m == 0 then b 
             else gcd' b m
  
+ gcd_m  = get_Int "First number:"  >>=
+         \fsn -> get_Int "Second number:" >>=
+         \scn ->   return $ ("The greatest common divisor is" ++) $ 
+                              show $ gcd' fsn scn  
+                 
+
 --ex 33
  coprime a b = (gcd' a b) == 1 
 
