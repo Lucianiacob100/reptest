@@ -1,19 +1,20 @@
 ---  Basic Calculator 
-
- --takes a numeric string  ex . "12341 "---> output is the combination of all possibilities made with 
-                           -- parenthesis and + and * operations  
+   --mathematical expression evaluator
+     
  import Data.Char
  
- -- the number of all possible combinations is 2 ^ (the number of digits in string) / 2
- make_expr _ _ []  = [] 
- make_expr _ _ [x] = [[x]] 
- make_expr s1 s2 (x:xs)  =  let comp = (make_expr s1 s2 xs)  
-                                  in
-                               (fmap ([x,s1] ++) comp ) ++ (fmap ([x,s2] ++) comp )
-
-
+ -- the number of all possible combinations is (the number of operators) ^ ((the number of digits in string) - 1)
+  --lopr is the list of operators
+ make_expr  _ []  = [] 
+ make_expr  _ [x] = [[x]] 
+ make_expr lopr (x:xs)  =  let comp = (make_expr lopr xs)  
+                               fsp  = fmap (\op -> [x,op]) lopr  {- ----> ["1+" , "1*" , "1-" ....] -}                              
+                               fsp'  = fmap (\m -> fmap (m ++)) fsp  
+                             in
+                         concat $ fsp' <*> [comp]
+ 
 -- expressions ls = fmap str_to_expr ls 
- data Aop  = Add | Mult deriving Show
+ data Aop  = Add | Mult | Sub deriving Show
 
  data Aexp  = Num Int | Exp  Aexp Aop Aexp | Void deriving Show
 
@@ -33,6 +34,14 @@
  addition (x:xs) | x == '+' = True
                  | otherwise  = addition xs
 
+ substraction [] = False
+ substraction  (x:xs) | x == '-' = True
+                 | otherwise  = addition xs
+
+ divison [] = False
+ divison  (x:xs) | x == '/' = True
+                 | otherwise  = addition xs
+
  multiplication [] = False
  multiplication (x:xs) | x == '*' = True
                  | otherwise  = multiplication xs 
@@ -41,13 +50,21 @@
                   then fst $ split_where '+' str
                   else if multiplication  str
                   then fst $ split_where '*' str
+                  else if substraction str 
+                  then fst $ split_where '-' str
+                  else if divison str 
+                  then fst $ split_where '/' str
                   else error "some error.."
 
  second_part str = if addition str 
-                   then snd $ split_where '+' str
-                   else if multiplication  str
-                   then snd $ split_where '*' str
-                   else error "some error.."
+                  then snd $ split_where '+' str
+                  else if multiplication  str
+                  then snd $ split_where '*' str
+                  else if substraction str 
+                  then snd $ split_where '-' str
+                  else if divison str 
+                  then snd $ split_where '/' str
+                  else error "some error.."
 
  single_number str  =  and [ isDigit  c |    c <- str  ]
 
@@ -86,7 +103,7 @@
  eval_string str = eval . str_to_expr $ str                
 
 
- fn str n = let list_expr = make_expr '+' '*' str
+ fn str n = let list_expr = make_expr ['+' ,'*'] str
                   in 
               filter (\s -> eval_string s  == n) list_expr
 
@@ -188,7 +205,7 @@
                    in  eval_string (group rez' ex')
 
 
- eval_all  str = let m = make_expr '+' '*' str
+ eval_all  str = let m = make_expr ['+', '*'] str
                      le = fmap make_gen_parant m
                      run [] = putStrLn "-------------"
                      run (x:xs)  = x >> (run xs)
@@ -197,4 +214,3 @@
                    fmap (fmap  (\e -> putStr (e ++ " =  ") >>
                         putStrLn (show $ eval_full_expr e))) le
                       
-
