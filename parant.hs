@@ -14,93 +14,70 @@
                          concat $ fsp' <*> [comp]
  
 -- expressions ls = fmap str_to_expr ls 
- data Aop  = Add | Mult | Sub deriving Show
+ data Aop  = Add | Mult | Sub  | Div deriving Show
 
- data Aexp  = Num Int | Exp  Aexp Aop Aexp | Void deriving Show
+ data Aexp  = Num Float | Exp  Aexp Aop Aexp | Void deriving Show
 
- 
---spliting the string into two pieces 
- split_where :: Char -> [Char] -> ([Char] , [Char])
- split_where ch str = let rs =  str
-                          x = takeWhile (/= ch) str  -- ch == '+'
-                          y =  tail $ dropWhile (/= ch) str
-                           in (x,y)
-
- s_to_i  s = read  s :: Int
+ s_to_i  s = read  s :: Float
 
 ----------------------------------------------------------------------------------------------------- 
 
- addition [] = False
- addition (x:xs) | x == '+' = True
-                 | otherwise  = addition xs
-
- substraction [] = False
- substraction  (x:xs) | x == '-' = True
-                 | otherwise  = addition xs
-
- divison [] = False
- divison  (x:xs) | x == '/' = True
-                 | otherwise  = addition xs
-
- multiplication [] = False
- multiplication (x:xs) | x == '*' = True
-                 | otherwise  = multiplication xs 
-
- first_part str = if addition str 
-                  then fst $ split_where '+' str
-                  else if multiplication  str
-                  then fst $ split_where '*' str
-                  else if substraction str 
-                  then fst $ split_where '-' str
-                  else if divison str 
-                  then fst $ split_where '/' str
-                  else error "some error.."
-
- second_part str = if addition str 
-                  then snd $ split_where '+' str
-                  else if multiplication  str
-                  then snd $ split_where '*' str
-                  else if substraction str 
-                  then snd $ split_where '-' str
-                  else if divison str 
-                  then snd $ split_where '/' str
-                  else error "some error.."
 
  single_number str  =  and [ isDigit  c |    c <- str  ]
+                     
 
- single_operation str  = let n  = length [ c  | c <- str , c == '+' , c == '*' ]
-                          in n == 1
+--cascading functions for finding the right operator and index
+ find_as pc cc (x:xs) exp | length (x:xs) == 1 = find_md 0 0 exp exp
+                          | x `elem` "()" =  find_as (pc + 1) (cc + 1) xs exp
+                          | (x `elem` "+-") && (even pc) = (x,cc)
+                          | otherwise    =  find_as pc (cc + 1) xs exp
 
+ find_md pc cc (x:xs) exp | length (x:xs) == 1 = find_first_as  0 exp exp
+                          | x `elem` "()" =  find_md (pc + 1) (cc + 1) xs exp
+                          | (x `elem` "*/") && (even pc) = (x,cc)
+                          | otherwise    =  find_md pc (cc + 1) xs exp
 
---parse the string to an expression tree
- str_to_expr :: String -> Aexp
- str_to_expr str | single_number str = Num $ s_to_i str
-                 | single_operation str = if addition str 
-                                          then Exp (Num $ s_to_i $ first_part str) Add (Num $ s_to_i $ second_part str)
-                                          else if multiplication str  
-                                          then  Exp (Num $ s_to_i $ first_part str) Mult (Num $ s_to_i $ second_part str)              
-                                          else error "Invalid operation!"
-                 | otherwise  = 
-                    let c = if '+' `elem` str then '+' else '*'
-                        op = if c == '+' then Add else Mult
-                          in
-                   let  s_str = split_where c str
-                        fp  = fst s_str
-                        r = snd s_str
-            in
-         (Exp (str_to_expr fp) op (str_to_expr r)) 
+ find_first_as cc (x:xs) exp | length (x:xs) == 1 = find_first_md  0 exp
+                             | x `elem` "+-"  = (x,cc)
+                             | otherwise  = find_first_as (cc + 1) xs exp
+
+ find_first_md cc (x:xs) | length (x:xs) == 1 = (' ' , -1) --search failed
+                         | x `elem` "*/"  = (x,cc)
+                         | otherwise  = find_first_md (cc + 1) xs
  
+ deparant (x:xs) | x == '(' = deparant xs
+                 | last (x:xs) == ')' = init (x:xs)
+                 | otherwise = x:xs
+
+ numarize  = Num  . s_to_i 
+ str_to_expr' str | single_number str = numarize str
+                  | otherwise         =  let pos_op  = find_as 0 0 str str 
+                                             op_s = fst pos_op
+                                             index = snd pos_op
+                                             first_part = take index str
+                                             second_part = drop (index + 1) str
+                                             form_expression p1 p2 op_d = Exp (str_to_expr' . deparant $  p1) op_d 
+                                                                              (str_to_expr' . deparant $ p2)
+                                            in
+                                         case op_s of
+                                         '+' -> form_expression first_part second_part Add
+                                         '-' -> form_expression first_part second_part Sub
+                                         '*' -> form_expression first_part second_part Mult
+                                         '/' -> form_expression first_part second_part Div
+                                         _   -> error "generic error"
  -------------------------------------------------------------------------------------------------------
  apply op = case op of 
            Add -> (+)
            Mult -> (*)
-
+           Sub  -> (-)
+           Div  -> (/)
+  
  --evaluating the expression tree to an integer
- eval:: Aexp -> Int
+ eval:: Aexp -> Float
  eval (Num n) = n
  eval (Exp m op n) = apply op (eval m) (eval n)
 
- eval_string str = eval . str_to_expr $ str                
+ eval_string str = eval . str_to_expr' $ str    --modified here --needs testing            
 
 
  fn str n = let list_expr = make_expr ['+' ,'*'] str
@@ -135,7 +112,7 @@
  rem_ i  ls = (take i ls) ++ drop (i+1) ls
 
 
- make_set lst = foldr (\e rl -> e : (filter (/= e) rl)) [] lst
+ make_set  = foldr (\e rl -> e : (filter (/= e) rl)) [] 
 
  make_gen_parant strop |  (length strop) == 3 = [add_paran (0,2) strop]
                        |  (length strop) < 3 = [strop]
@@ -155,62 +132,14 @@
        in make_set $  (add_paran (0,length strop - 1) strop) : concat ( fmap reparant  $
                                                                   (fmap spl $ 
                                                                      paran_str ))
----------------------------------------------------------------
 
-
- get_all_ind expr = fst $ 
-   foldl (\ac h -> let f_mem = if h == '(' || h == ')' then 
-                               (fst ac) ++ [snd ac]
-                               else (fst ac)
-                       s_mem  = (snd ac) + 1
-                  in (f_mem, s_mem)  ) ([] , 0)  expr      
-                   
-             
- group_by_two [] = []
- group_by_two (x:y:xs)  = (x,y) : (group_by_two xs)
-
-                  
- split_expr e = fst $
-                let lsi = group_by_two $ get_all_ind e
-                    in_range i lst = or $ fmap (\t -> i >= (fst t) && i <= (snd t ))  lst
-                    in 
-                foldl (\ac h -> let  f_mem  = if (snd ac) `in_range` lsi then 
-                                            (fst ac) ++ ""
-                                             else (fst ac) ++  [h]  
-                                     s_mem  = (snd ac) + 1
-                                 in (f_mem , s_mem))  (  [] , 0 ) e  
- 
- intr_first sn e = sn ++ e
-
- intr_where sn [] = sn
- intr_where sn [x,y] | y == '+' || y == '*' = [x,y] ++ sn
-                     |otherwise  = [x,y]
- intr_where sn (x:xs) = if (x == '+' || x == '*') && (not $ isDigit (head xs)) 
-                        then  x  : (sn ++ xs)
-                        else x : (intr_where sn xs)
-
- intr_in_place sn "" = sn
- intr_in_place sn (x:xs) | (not $ isDigit x)  = intr_first sn (x:xs)
-       {- -}             | otherwise  = intr_where sn (x:xs)
-
- group lr exp  = snd $
-                 until (\t  -> null (fst t)) 
-                       (\t -> ((tail (fst t)) , (intr_in_place (head (fst t)) (snd t))
-                               ))(lr, exp)
-
- eval_full_expr ex  = let ex' = split_expr ex
-                          lr  = group_by_two $ get_all_ind ex
-                          rez  = fmap (\r -> uncurry slice  r ex ) . fmap (\(x,y) -> (x+1,y-1)) $ lr
-                          rez' = fmap show $ fmap eval_string rez
-                   in  eval_string (group rez' ex')
-
-
- eval_all  str = let m = make_expr ['+', '*'] str
+ eval_all lopr  str =
+                 let m = make_expr lopr str
                      le = fmap make_gen_parant m
                      run [] = putStrLn "-------------"
                      run (x:xs)  = x >> (run xs)
                 in 
                   run  $ fmap run $
                    fmap (fmap  (\e -> putStr (e ++ " =  ") >>
-                        putStrLn (show $ eval_full_expr e))) le
+                        putStrLn (show $ eval_string e))) le
                       
