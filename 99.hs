@@ -1,6 +1,7 @@
 
 
   -- exercises from https://wiki.haskell.org/99_questions
+   --an other related stuff
  import Control.Applicative
  import System.Random
  import Data.Bifunctor
@@ -348,6 +349,8 @@
  get_Int :: String -> IO Int
  get_Int msg  = ((\m -> putStrLn m >> getLine) >=> (\s -> return $ mtoInt s)) msg 
 
+
+--Euclid's algoritm
  gcd' a b  = let m  = mod a b
               in
             if m == 0 then b 
@@ -358,7 +361,32 @@
          \scn ->   return $ ("The greatest common divisor is" ++) $ 
                               show $ gcd' fsn scn  
                  
-
+--Euclidian extended algorithm
+  -- m*a + n * b   = gcd a b
+   -- input: a,b output: [gcd a b , m , n]
+ ext_gcd :: Integral a => a -> a -> [a]
+ ext_gcd a b = let [mpp,mp,npp,np,aa,bb] = [1,0,0,1,a,b]
+                   myargs   =  [mpp,mp,npp,np,aa,bb]
+                   trans args = if (args !! 5) == 0 then 
+                                    let rez = [args !! 4 , args !! 0 , args !! 2]
+                                       in
+                                     if (args !! 4) >= 0 then rez
+                                     else fmap (*(-1)) rez
+                                else 
+                                  let q = div (args !! 4)  (args !! 5)
+                                      r = rem (args !! 4) (args !! 5)
+                                      aa' = args !! 5
+                                      bb' = r
+                                      m = (args !! 0) - q * (args !! 1)
+                                      n = (args !! 2) - q * (args !! 3)
+                                      mpp' = (args !! 1)
+                                      mp' = m
+                                      npp' = args !! 3
+                                      np' = n
+                               in
+                                   trans [mpp',mp',npp',np',aa',bb']
+                 in trans myargs
+                 
 --ex 33
  coprime a b = (gcd' a b) == 1 
 
